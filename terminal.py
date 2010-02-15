@@ -158,7 +158,6 @@ def termsize():
     if not height: return 25, 80
     return height, width 
 
-'''
 import io
 import sys
 import atexit
@@ -429,4 +428,3 @@ class ScreenBuffer:
     #time.sleep(1)
 
 #setup()
-'''
