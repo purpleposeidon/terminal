@@ -1,5 +1,5 @@
 When to use:
-  You don't want to deal with the acurrsed curses.
+  You don't want to deal with the acursed curses.
   You've got multiple terminal windows running around
   You just want color/attributes
 
@@ -8,4 +8,8 @@ When not to use:
   If want output to be optimized (I guess? Doesn't curses optimize that sort of thing?)
   
 
-Not much documentation in the library. You'll see a bunch of stuff, yeah? You can just print them out.
+The Modules:
+  escape.py
+    Various escape sequences.
+  lineread.py
+    To get a line of input. Can have a sorta shody history buffer.
