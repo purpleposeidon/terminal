@@ -13,3 +13,8 @@ The Modules:
     Various escape sequences.
   lineread.py
     To get a line of input. Can have a sorta shody history buffer.
+  termwindow.py
+    Creates output-only terminal windows.
+  termbuffer.py
+    (Haven't tested recently)
+    Only print out changes to the terminal window
