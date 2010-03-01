@@ -17,9 +17,9 @@
 
 import os
 import sys
-import codecs
-import escape
 
+import escape
+import coms
 
 class Reader:
   """
@@ -31,15 +31,14 @@ class Reader:
     self.buffer = []
     self.index = 0
     #self.i = os.open("/dev/stdin", os.O_RDONLY | os.O_NONBLOCK)
-    self.i = codecs.open("/dev/stdin", encoding='utf-8')
+    self.i = coms.Input()
     self.prefix = prefix
     self.savehistory = savehistory
-    escape.term_setup(self.i.fileno())
     self.redraw()
 
   def redraw(self):
     val = ''.join(self.buffer).encode('utf-8')
-    height, width = escape.termsize()
+    height, width = coms.termsize()
     #if len(val)
     sys.stderr.write(str(escape.ClearLine))
     sys.stderr.write('\r'+self.prefix+val)
@@ -69,9 +68,6 @@ class Reader:
         c = self.i.read(1)
         if c == '':
           break
-        #print self.i, self.buffer
-        #print '\r', escape.ClearLine, repr(c)
-        #self.redraw()
       except IOError:
         break
       if c == escape.ESC:
@@ -85,14 +81,14 @@ class Reader:
         elif str(escape.CursorRight) in e:
           self.index = min(len(self.buffer), self.index+1)
           self.redraw()
-        elif '\x1b[1;5D' in e: #Ctrl-left
+        elif escape.CSI+'1;5D' in e: #Ctrl-left
           self.index -= 1
           while self.index > 0 and self.buffer[self.index] in ' ':
             self.index -= 1
           while self.index > 0 and self.buffer[self.index] not in ' ':
             self.index -= 1
           self.redraw()
-        elif '\x1b[1;5C' in e: #Ctrl-right
+        elif escape.CSI+'1;5C' in e: #Ctrl-right
           l = len(self.buffer)
           while self.index < l and self.buffer[self.index] in ' ':
             self.index += 1
