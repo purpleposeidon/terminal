@@ -1,20 +1,19 @@
 When to use:
-  You don't want to deal with the acursed curses.
-  You've got multiple terminal windows running around
-  You just want color/attributes
+  You don't want to deal with the accursed curses.
+  You want to use multiple windows (e.g, MDI)
+  You just want color/attributes, without dealing with the accursed curses
+  You need to do do curses on files other than stdout.
 
 When not to use:
   When you've got to support non-typical terminals
-  If want output to be optimized (I guess? Doesn't curses optimize that sort of thing?)
-  
+
 
 The Modules:
   escape.py
     Various escape sequences.
   lineread.py
-    To get a line of input. Can have a sorta shody history buffer.
+    To get a line of input. Has a shoddy history buffer that can be disabled.
   termwindow.py
     Creates output-only terminal windows.
   termbuffer.py
-    (Haven't tested recently)
     Only print out changes to the terminal window
