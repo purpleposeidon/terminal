@@ -57,16 +57,16 @@ class Input:
       self.orig_flags = setup(self.fileno())
   
   def close(self):
-    codecs.StreamReader.close(self)
     self.setblocking(True)
+    self.fd.close()
 
 
 @atexit.register
 def repair_terminal():
   #Restore terminal to shell mode
-  global RESET_STDIN, ORIG_STDIN_FLAGS
+  global RESET_STDIN, ORIG_STDIN_FLAGS, __fd
   if RESET_STDIN:
-    cleanup(ORIG_STDIN_FLAGS, sys.stdin.fileno())
+    cleanup(ORIG_STDIN_FLAGS, __fd)
     RESET_STDIN = False
 
 #stolen termios voodoo code is stolen magic voodoo.

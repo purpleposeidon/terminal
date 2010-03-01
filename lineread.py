@@ -30,7 +30,6 @@ class Reader:
     self.lines_index = 0
     self.buffer = []
     self.index = 0
-    #self.i = os.open("/dev/stdin", os.O_RDONLY | os.O_NONBLOCK)
     self.i = coms.Input()
     self.prefix = prefix
     self.savehistory = savehistory
@@ -64,7 +63,6 @@ class Reader:
     c = ''
     while 1:
       try:
-        #c = os.read(self.i, 1)
         c = self.i.read(1)
         if c == '':
           break

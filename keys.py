@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 
+"""
+Todo
+  liscense boilerplate
+
+Bugs
+  Numpad is a terrifying mess
+"""
 
 import sys
 
 import escape
-
+import coms
 
 all_keys = {}
 
@@ -39,7 +46,13 @@ class EscKey(SpecialKey):
 
 
 class ModKey:
-  mods = ['2', {"shift":True}], ['3', {"alt": True}], ['4', {"shift":True, "alt":True}], ['5', {"ctrl":True}], ['6', {"shift":True, "ctrl":True}]
+  mods = \
+    ['2', {"shift":True}], \
+    ['3', {"alt": True}], \
+    ['4', {"shift":True, "alt":True}], \
+    ['5', {"ctrl":True}], \
+    ['6', {"shift":True, "ctrl":True}], \
+    ['7', {"ctrl": True, "alt": True}]
   def __init__(self, name, value):
     #Makes its own KeyState, okay?
     value = value.replace('\E', escape.ESC).replace('\e', escape.ESC)
@@ -51,7 +64,7 @@ class ModKey:
     else:
       all_keys[value.replace('*', '')] = KeyState(name)
     for mod_num, key_presses in ModKey.mods:
-      k = KeyState(name, *key_presses)
+      k = KeyState(name, **key_presses)
       v = value.replace("*", mod_num)
       all_keys[v] = k
 
@@ -71,17 +84,19 @@ class KeyState:
     if self.shift:
       v = v.upper()
       if v == self.value:
-        v = 'Shift-'+self.value
+        v = 'Shift-'+self.value.encode("utf")
       v = v.title()
     elif self.value == self.value.upper():
       v = v.title()
+    v = self.value.encode("utf")
     if self.alt:
       v = 'Alt-'+v
     if self.ctrl:
       v = 'Ctrl-'+v
-    if len(v) == 1:
+    if len(self.value) == 1:
       return v+"-key"
-    return v
+    else:
+      return v.title()
   __repr__ = __str__
 
 
@@ -125,41 +140,48 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=True):
       c += n #We'll have at least two characters
       result = all_keys.get(c, None)
       if result:
+        print c
         yield result
         return
       elif len(c) > 7 or n in ESCAPE_ENDS:
         #There's definitly something wrong!
+        print "What? Got", `c`
         break
     
     if len(c) == 2:
       #It's a meta key
       char = c[1]
       k = all_keys.get(char, nonce_key(char))
+      print `c`
       yield k.meta()
     elif show_esc_fail:
       #It's nothing that we know about
       for char in c:
+        print `c`
         yield all_keys.get(char, nonce_key(char))
   else:
     #A single key!
     if c == '\r':
       #Err, skip that.
       return
+    print `c`
     yield all_keys.get(c, nonce_key(c))
 
 
 #'''
 #Key data
-EscKey("ESC", "\e")
-SpecialKey("TAB", "\t")
+EscKey(KeyState("ESC", single=True), "\e")
+SpecialKey(KeyState("TAB", single=True), "\t")
 EscKey(KeyState("TAB", shift=True), "\e[Z")
-SpecialKey("ENTER", '\n')
+SpecialKey(KeyState("ENTER", single=True), '\n')
 EscKey(KeyState("ENTER", shift=True), '\eOM')
-SpecialKey("BACKSPACE", '\x7f')
-EscKey("UP", '\EA')
-EscKey("DOWN", '\EB')
-EscKey("RIGHT", '\EC')
-EscKey("LEFT", '\ED')
+SpecialKey(KeyState("BACKSPACE", single=True), '\x7f')
+
+#These eat up meta-A 
+#EscKey("UP", '\EA')
+#EscKey("DOWN", '\EB')
+#EscKey("RIGHT", '\EC')
+#EscKey("LEFT", '\ED')
 
 EscKey("UP", '\E0A')
 EscKey("DOWN", '\E0B')
@@ -220,10 +242,11 @@ ModKey("INSERT", "\E[2;*~")
 ModKey("DELETE", "\E[3;*~")
 
 
+
 ##### Other keys, not copied from the Konsole dev's
-SpecialKey("SPACE", ' ')
-EscKey("PAGE UP", "\E[5~")
-EscKey("PAGE DOWN", "\E[6~")
+SpecialKey(KeyState("SPACE", single=True), ' ')
+#EscKey("PAGE UP", "\E[5~")
+#EscKey("PAGE DOWN", "\E[6~")
 ModKey("PAGE UP", "\E[5;*~") #XXX Mods don't match!
 ModKey("PAGE DOWN", "\E[6;*~") #XXX Mods don't match!
 #I think part of the problem is that most terminals scroll up with this...
@@ -235,10 +258,10 @@ ModKey("PAGE DOWN", "\E[6;*~") #XXX Mods don't match!
 
 if __name__ == '__main__':
   try:
-    escape.term_setup(sys.stdin)
-    for _ in key_stream(sys.stdin):
-      print _
+    inp = coms.Input()
+    for _ in key_stream(inp):
+      sys.stdout.write(str(_)+'\n')
   except (KeyboardInterrupt, EOFError):
     pass
   finally:
-    escape.cleanup()
+    inp.close()
