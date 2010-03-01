@@ -54,7 +54,8 @@ ClearLineRight = AsciiCode("K")
 ClearLineLeft = AsciiCode("1K")
 ClearScreen = AsciiCode("2J") #Cursor goes to bottom left. (see CursorHome)
 TerminalReset = AsciiCode(sequence="c")
-TerminalTitle = AsciiCode("2;@\007") #Didn't work with konsole, maybe with yours?
+TerminalTitle = AsciiCode(sequence="]2;@\a") #Works with xterm
+# konsole/screen will print out part of the argument
 CursorHome = AsciiCode("H") #Top-left
 CursorEnd = AsciiCode('F') #Doesn't do anything. It's for the 'END' key.
 CursorUp = AsciiCode("@A") #Attempts to move cursor offscreen have no uffect, even with a scrollback buffer
