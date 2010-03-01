@@ -34,18 +34,18 @@ class Window:
     if self.fd:
       os.close(self.fd)
   
-  def write(self, *args):
+  def write(self, *args, **kwargs):
     try:
       while args:
         a = args[0]
         os.write(self.fd, str(a).encode('utf'))
         args = args[1:]
     except OSError as err:
+      if kwargs.get('second') or not self.recreate:
+        raise
       if err.errno == 32 or err.strerror == "Broken pipe":
         self.create_terminal() #Try to re-make the terminal
-        #Try to re-write everything... but don't try too hard
-        for a in args:
-          os.write(self.fd, bytes(str(a), 'utf8'))
+        self.write(*args, second=True)
       else:
         raise
 
@@ -102,7 +102,7 @@ class Window:
     
 
 
-  def __init__(self, title="", verbose=True):
+  def __init__(self, title="", verbose=True, recreate=True):
     """
     Creates another terminal that can be used. If the program is being called from within
     screen, it will use the command "screen" to create another screen in screen. Otherwise,
@@ -116,6 +116,7 @@ class Window:
     self.fifoname = tempfile.mktemp(prefix="terminal-")
     self.title = title
     self.verbose = verbose
+    self.recreate = recreate
     self.fd = None
     os.mkfifo(self.fifoname)
     self.create_terminal()
@@ -137,11 +138,11 @@ if not(in_screen or in_x):
 
 if __name__ == '__main__':
   t = Window("Terminal Library Test Window")
-  t.write("Test!\n")
-  print "Echo program!"
+  print "Type stuff to be written into the other window."
+  t.write("This is the new window!\n")
   while 1:
     try:
-      t.write(raw_input())
+      t.write(raw_input()+'\n')
     except (KeyboardInterrupt, EOFError):
       break
   
