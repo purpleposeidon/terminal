@@ -19,81 +19,129 @@ import escape
 
 
 class Character:
-  #A thought: What about multi-cell items?
   def dup(self):
-    """If you're going to be manipulating characters (or colors) on an individual basis, you'll need to duplicate them. Otherwise, all of them will change!"""
-    return Character(self.symbol, self.ascii, self.color)
-  def __init__(self, symbol, ascii=None, color=escape.GRAY, name='(No name)', flavor='(No flavor)'):
-    #XXX: What about animated stuff?
+    """If you're going to be manipulating characters (or colors) on an individual basis,
+    you'll need to duplicate them. Otherwise, all of them will change!"""
+    return Character(self.symbol, self.attr)
+  
+  def __init__(self, symbol, attr=escape.GRAY):
     self.symbol = symbol
-    self.color = color
-    self.name = name
-    self.description = flavor
-    if not ascii:
-      if ord(symbol) < 255:
-        self.ascii = symbol
-      else:
-        self.ascii = '?'
+    self.attr = attr
+  
+  def format(self, old_attr=None):
+    if old_attr == self.attr:
+      return self.symbol
     else:
-      self.ascii = ascii
+      return "%s%s" % (self.attr, self.symbol)
 
-  def __str__(self):
-    return "%s%s" % (self.color, self.symbol)
+  def __repr__(self):
+    return "%s%r%s" % (self.attr, self.symbol, escape.NORMAL)
 
-empty_char = Character(' ', ascii=' ')
+EMPTY_CHAR = Character(' ')
 
-class ScreenBuffer:
-  def __init__(self):
-    self.buff = {}
-  def __setitem__(self, add, val):
-    self.buff[add] = val
-  def __getitem__(self, pos):
-    return self.buff.get(pos, empty_char)
-  def diff_char(self, old, pos):
-    c = self[pos]
-    b = old[pos]
-    return (c.symbol == b.symbol) and (c.color == b.color)
-  def draw(self, fd, old, width, height, draw_count=0):
-    #if draw_count: return
-    fd.write(CursorHome)
-    con = ''
-    old_attr = None
-    for y in range(0, width):
-      l = ''
-      for x in range(0, height):
-        p = (x, y)
-        c = self[p]
-        if c.color == old_attr:
-          l += c.symbol
-        else:
-          l += str(c)
-          old_attr = c.color
+class CharacterBuffer:
+  def __init__(self, width, height, fd, offset=(0, 0)):
+    self.width = width
+    self.height = height
+    self.fd = fd
+    self.dx, self.dy = offset
+    
+    self.buff = {} #form [(x, y)] = Character
+    self.changed = {} #form (x, y) = Character
+    self.needs_full_redraw = True
 
-      #fd.write(l+'\n\r')
-      con += l + '\n\r'
-    fd.write(con)
+  def resize(self, width, height):
+    self.width = width
+    self.height = height
 
-    return
-    for y in range(0, width):
-      #Build list of what needs to be redrawn
-      needs_refresh = []
-      for x in range(0, height):
-        if self.diff_char(old, (x, y)):
-          needs_refresh.append(( x, self[(x, y)] ))
+  def set_fd(self, fd):
+    if self.fd != fd:
+      self.fd = fd
+      self.needs_full_redraw = True
 
-      #Now, redraw.
-      #Moving costs CSI+2 char, reprinting costs CSI+4 char if the attr has changed, only 1 char if the attr is the same as the one to the left.
-      # TODO This could be made more efficient by checking if the distance to move is less than 3 and all of those symbols are the same
-      oldattr = None
-      while needs_refresh:
-        x, c = needs_refresh.pop(0)
-        if c.color == oldattr:
-          fd.write(c.symbol)
-        else:
-          oldattr = c.color
-          fd.write(str(oldattr)); fd.write(c.symbol)
-        if len(needs_refresh) > 1:
-          dx = (needs_refresh[1][0] - x) - 1
-          if dx > 0:
-            fd.write(CursorRight(dx))
-      fd.write('\r\n')
+  def add(self, x, y, char, attr=escape.GRAY):
+    #Put char at x, y
+    if isinstance(char, Character):
+      if self.buff.get((x, y), None) != char:
+        self.changed[(x, y)] = char
+        self.buff[(x, y)] = char
+    else:
+      for c in char:
+        self.add(x, y, Character(c, attr=attr))
+        x += 1
+  
+  def redraw(self):
+    #Re-draw everything
+    self.fd.write(str(escape.CursorHome))
+    if self.dy:
+      #Top offset
+      self.fd.write(escape.CursorDown(self.dy))
+    last_attr = None
+    for y in range(self.height):
+      if self.dx:
+        self.fd.write(escape.CursorRight(self.dx)) #Left offset
+      for x in range(self.width):
+        c = self.buff.get((x, y), EMPTY_CHAR)
+        self.fd.write(c.format(last_attr))
+        last_attr = c.attr
+      self.fd.write(str(escape.CursorReturn)+str(escape.NewLine))
+    self.needs_full_redraw = False
+    self.changed = {}
+    self.fd.flush()
+  
+  def draw(self):
+    if self.needs_full_redraw:
+      self.redraw()
+      return
+    cx = cy = None
+    last_attr = None
+    #self.fd.write(str(escape.CursorHome))
+    for y in range(self.height):
+      for x in range(self.width):
+        c = self.changed.get((x, y))
+        
+        if c:
+          #Put the cursor in proper position.
+          #This is probably where the most optimization can come from
+          if cx == cy == None:
+            if x == y == 0:
+              self.fd.write(str(escape.CursorHome))
+            else:
+              self.fd.write(escape.CursorSet(x+self.dx+1, y+self.dy+1))
+          elif x == 0 and (cy+1 == y):
+            self.fd.write(escape.NewLine())
+          elif (cx+1 == x) and (cy == y):
+            pass #Just to the right, so do nothing
+          elif (cx == x) and (cy != y):
+            #Just move the y cursor
+            self.fd.write(escape.CursorDown(cy-y))
+          elif (cy == y) and (cx != x):
+            self.fd.write(escape.CursorRight(x-cx))
+          else:
+            self.fd.write(escape.CursorSet(y+self.dy+1, x+self.dx+1))
+          self.fd.write(c.format(last_attr))
+          last_attr = c.attr
+          cx, cy = x, y
+    self.changed = {}
+    if not (cx == cy == None):
+      self.fd.flush()
+
+if __name__ == '__main__':
+  import sys, time
+  cb = CharacterBuffer(20, 3, sys.stdout)
+  cb.draw()
+  cb.add(0, 0, Character(':'))
+  cb.add(1, 0, Character('D'))
+  cb.add(0, 1, Character("!"))
+  cb.draw()
+  time.sleep(.5)
+  cb.draw()
+  cb.add(0, 0, Character('X'))
+  cb.draw()
+  time.sleep(.5)
+  cb.draw()
+  cb.add(1, 1, "This is a test!", escape.RED)
+  cb.draw()
+  time.sleep(.5)
+  cb.redraw()
+  
