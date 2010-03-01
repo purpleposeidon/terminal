@@ -15,13 +15,15 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import escape
+
 
 class Character:
   #A thought: What about multi-cell items?
   def dup(self):
     """If you're going to be manipulating characters (or colors) on an individual basis, you'll need to duplicate them. Otherwise, all of them will change!"""
     return Character(self.symbol, self.ascii, self.color)
-  def __init__(self, symbol, ascii=None, color=GRAY, name='(No name)', flavor='(No flavor)'):
+  def __init__(self, symbol, ascii=None, color=escape.GRAY, name='(No name)', flavor='(No flavor)'):
     #XXX: What about animated stuff?
     self.symbol = symbol
     self.color = color
