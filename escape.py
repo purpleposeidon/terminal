@@ -150,68 +150,9 @@ PINK = Color(_PURPLE, attr=BRIGHT)
 colors = {'black':BLACK, 'red':RED, 'green':GREEN, 'brown':BROWN, 'blue':BLUE, 'purple':PURPLE, 'cyan':CYAN, 'gray':GRAY, 'dark gray':DARK_GRAY, 'white':WHITE, 'orange':ORANGE, 'light green':LIGHT_GREEN, 'light blue':LIGHT_BLUE, 'yellow':YELLOW, 'light cyan':LIGHT_CYAN, 'pink':PINK}
 
 
-import os, termios, fcntl, struct
 
 
-
-def termsize():
-  """ Returns the (height, width) of the terminal. Stolen from somewhere."""
-  try:
-    return int(os.environ["LINES"]), int(os.environ["COLUMNS"])
-  except KeyError:
-    #The above environ variables are rarely defined.
-    height, width = struct.unpack(
-      "hhhh", fcntl.ioctl(1, termios.TIOCGWINSZ ,"\000"*8))[0:2]
-    if not height: return 25, 80
-    return height, width 
-
-import io
-import sys
-import atexit
 import tempfile
 
 
-
-#Handle input stuff...
-fd = None
-oldterm = None
-newattr = None
-oldflags = None
-
-#stolen termios voodoo code is stolen magic voodoo.
-#I've quite forgotten where it comes from.
-
-@atexit.register
-def cleanup(fd_=None):
-  """Return terminal to sanity, remove plumbing"""
-  global fd, oldterm, newattr, oldflags
-  if fd_:
-    use_fd = fd_
-  else:
-    use_fd = fd
-  if use_fd is None:
-    return #It wasn't set up to begin with!
-  try:
-    termios.tcsetattr(use_fd, termios.TCSAFLUSH, oldterm) #Stolen
-    fcntl.fcntl(use_fd, fcntl.F_SETFL, oldflags) #Stolen
-  except: pass
-  
-
-#This code is also stolen.
-def term_setup(fd_=None):
-  """Puts the terminal the way we want it. This code is also stolen.
-  XXX Can only call it once per cleanup()"""
-  global fd, oldterm, newattr, oldflags
-  if fd_:
-    fd = fd_
-  else:
-    fd = sys.stdin.fileno()
-  
-  oldterm = termios.tcgetattr(fd)
-  newattr = oldterm[:]
-  newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
-  termios.tcsetattr(fd, termios.TCSANOW, newattr)
-  
-  oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
-  fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
 
