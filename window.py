@@ -178,7 +178,7 @@ class Window:
     self.title = self.title.replace('"', '').replace("'", "\\'")
     cmd = cmd.format(tail, '"'+self.title+'"')
     if self.verbose:
-      print cmd
+      #print cmd
       sys.stderr.write("\rOpening new window, if this program hangs, press Ctrl-C")
       sys.stderr.flush()
       

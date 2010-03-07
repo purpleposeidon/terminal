@@ -1,3 +1,3 @@
 #!/bin/sh
 
-rm *~ *.pyc *.pyo
+rm *~ *.pyc *.pyo 2> /dev/zero
