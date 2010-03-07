@@ -71,6 +71,7 @@ class Window:
     self.write(str(SetBlock)+iochoice+c)
   
   def __del__(self):
+    self.recreate = False #Window may otherwise flare up
     try:
       self.close()
     except: pass
@@ -177,13 +178,21 @@ class Window:
     self.title = self.title.replace('"', '').replace("'", "\\'")
     cmd = cmd.format(tail, '"'+self.title+'"')
     if self.verbose:
-      #print cmd
+      print cmd
       sys.stderr.write("\rOpening new window, if this program hangs, press Ctrl-C")
       sys.stderr.flush()
       
     r = os.system(cmd)
     self.open_files()
     coms.noblock(self.kd.fileno())
+    self.ask_size()
+    time.sleep(.01)
+    try: self.read()
+    except:
+      #Try again?
+      time.sleep(.05)
+      try: self.read()
+      except: pass
     #self.write(escape.ClearLine, '\r')
     
     if self.verbose:
@@ -245,6 +254,7 @@ if __name__ == '__main__':
   inp = coms.Input()
   print winmsg
   while 1:
+    orig_size = t.size
     avail = select.select([inp.fileno(), t.kd.fileno()], [], [])
     #print avail
     if inp.fileno() in avail[0]:
@@ -261,4 +271,6 @@ if __name__ == '__main__':
       #print "Got:", `o`
       sys.stdout.write(o.encode('utf'))
       sys.stdout.flush()
+    if t.size != orig_size:
+      print "Terminal size:", t.size
     #break

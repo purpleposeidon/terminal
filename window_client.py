@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import select
-import readline
 import codecs
+import select
+import signal
+import readline
+
 
 import escape
 import coms
@@ -21,16 +23,32 @@ Needed commands:
 
 
 
+def say_size(w, h, kf):
+  kf.write(window.IsSize+str(h)+','+str(w)+';')
+  kf.flush()
+
 def main(display_file, keys_file):
   print "Window not connected . . ."
   df = coms.Input(display_file)
   kf = open(keys_file, 'w')
+  def resize_handler(*args):
+    w, h = coms.termsize()
+    say_size(w, h, kf)
+  signal.signal(signal.SIGWINCH, resize_handler)
   output = ''
   input_mode = 'r'
   line_reader = lineread.Reader()
   first = True
   while 1:
-    avail = select.select([line_reader.fd, df], [], [])
+    try:
+      avail = select.select([line_reader.fd, df], [], [])
+    except select.error as err:
+      #print err
+      #print err.args
+      if err.args[0] == 4:
+        #This is alright, there's been a resize
+        continue
+      raise
     if first or (df in avail[0]):
       if not output:
         output = ''
@@ -42,7 +60,7 @@ def main(display_file, keys_file):
       while output:
         if output.startswith(window.GetSize):
           h, w = coms.termsize()
-          kf.write(window.IsSize+str(h)+','+str(w)+';')
+          say_size(h, w, kf)
           output = output.replace(window.GetSize, '', 1)
           kf.flush()
         elif output.startswith(window.SetBlock):
@@ -112,8 +130,10 @@ if __name__ == '__main__':
     try:
       main(df, kf)
     except Exception as e:
+      print "Got exception:"
       print e
-      raw_input("Press enter to continue. . .")
+      print "Press enter to continue. . ."
+      raw_input()
       raise
   else:
     print "This program is used by window.py\nUsage: {0} terminaloutputfile keyinputfile".format(sys.argv[0])
