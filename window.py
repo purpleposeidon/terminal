@@ -20,26 +20,92 @@ import time
 import tempfile
 import subprocess
 
+import coms
+import keys
 import escape
+
+
 
 def exists(what):
   #Use 'which' to check that a program exists
   return not subprocess.Popen(['which', what], stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
 
 
+GetSize = str(escape.AsciiCode("xS?"))
+IsSize = str(escape.AsciiCode("xS=")) #"xS=40,80;"
+SetBlock = str(escape.AsciiCode("xB")) #e.g, "xBi1". Form: xB[i or o][1 or 0]
+InputFunc = str(escape.AsciiCode("xR")) #"xRr": sys.read;  "xRi": input(); "xRR": lineread
+CloseWindow = str(escape.AsciiCode("xQ"))
+NullEscape = str(escape.AsciiCode("xx"))
+
+commands = [GetSize, IsSize, SetBlock, InputFunc, CloseWindow]
+
 
 class Window:
-  def __del__(self):
-    os.unlink(self.fifoname)
-    if self.fd:
-      os.close(self.fd)
+  def is_open(self):
+    try:
+      self.write(NullEscape)
+      return True
+    except OSError:
+      return False
+  def make_open(self):
+    if not self.is_open():
+      self.create_terminal()
+  def ask_size(self):
+    self.write(GetSize)
   
+  def close(self):
+    #self.write("closing\n")
+    self.write("\x1b[xQ")
+    time.sleep(.01)
+    self.close_files()
+  
+  def input_mode(self, mode):
+    #r = sys.read, i = raw_input, R = Reader
+    assert mode in "riR"
+    self.write(InputFunc+mode)
+  
+  def set_blocking(self, iochoice, yesno):
+    assert iochoice in 'io'
+    c = str(int(yesno))
+    self.write(str(SetBlock)+iochoice+c)
+  
+  def __del__(self):
+    try:
+      self.close()
+    except: pass
+    os.unlink(self.fifoname)
+    os.unlink(self.keysname)
+    
+  def read(self, *args, **kwargs):
+    try:
+      d = self.kd.read(*args)
+    except IOError:
+      if kwargs.get("first"):
+        self.make_open()
+        d = self.read(*args, first=False)
+      else:
+        raise
+      #return self.kd.read(*args)
+    while IsSize in d:
+      afore = d[:d.index(IsSize)]
+      after = d[d.index(IsSize)+len(IsSize):]
+      #after = after[+1:]
+      #print `after`
+      dim = after[:after.index(';')]
+      after = after[after.index(';')+1:]
+      d = afore+after
+      newsize = [int(_) for _ in dim.split(',')]
+      #print "Old size:", self.size, "New size:", newsize
+      self.size = newsize
+    return d
   def write(self, *args, **kwargs):
     try:
-      while args:
-        a = args[0]
-        os.write(self.fd, str(a).encode('utf'))
-        args = args[1:]
+      for a in args:
+        if not (type(a) in (str, unicode)):
+          a = str(a)
+        os.write(self.fd, a.encode('utf'))
+      #self.flush()
     except OSError as err:
       if kwargs.get('second') or not self.recreate:
         raise
@@ -49,13 +115,25 @@ class Window:
       else:
         raise
 
+  def open_files(self):
+    self.fd = os.open(self.fifoname, os.O_WRONLY)
+    self.kd = self.key_out(self.keysname) #open(self.keysname)
+  def close_files(self):
+    os.close(self.fd)
+    self.kd.close()
   def flush(self):
-    os.fsync(self.fd)
-    pass
+    self.close_files()
+    self.open_files()
+    #pass
+    #os.fsync(self.fd)
+    #except: pass
+    #os.fsync(self.kd.fileno())
+    #except: pass
 
   def create_terminal(self):
     """Runs the program to display our output"""
     DO_AND = True
+    SILENCE_STDOUT = True
     if "TERM" in os.environ:
       t = os.environ["TERM"]
 
@@ -69,7 +147,8 @@ class Window:
         if "DESKTOP_SESSION" in os.environ:
           ds = os.environ["DESKTOP_SESSION"].lower()
           if 'kde' in ds and exists("konsole"):
-            cmd = "konsole --caption {1} --title {1} -e {0}"
+            cmd = "konsole --title {1} -e {0}"
+            SILENCE_STDOUT = False #Funky bug.
           elif 'gnome' in ds and exists("gnome-terminal"):
             cmd = "gnome-terminal -t {1} --execute {0}"
       else:
@@ -80,19 +159,31 @@ class Window:
     else:
       raise SystemExit("This program requires the TERM environment variable to be defined.")
     #Another option would be try using "TERM" as the name of the shell to execute, but it would be unlikely to ever get there (And might be a little bit insecure)
-    tail = "cat {0} > /dev/zero 2> /dev/zero".format(self.fifoname)
-    if not exists("cat"):
-      if not exists("type"):
-        raise SystemExit("command 'cat' not found. What kind of person doesn't have a cat?")
+    #tail = "cat {0} > /dev/zero 2> /dev/zero".format(self.fifoname)
+    
+    try:
+      d = os.path.split(__file__)[0]
+      if not d:
+        d = os.getcwd()
+      cmd_name = os.path.join(d, 'window_client.py')
+    except:
+      cmd_name = '`pwd`/window.py'
+    tail = "{0} {1} {2}".format(cmd_name, self.fifoname, self.keysname)
+    if SILENCE_STDOUT:
+      tail += " > /dev/zero"
+    tail += " 2> /dev/zero"
     if DO_AND:
       tail += " &"
-    cmd = cmd.format(tail, repr(self.title))
+    self.title = self.title.replace('"', '').replace("'", "\\'")
+    cmd = cmd.format(tail, '"'+self.title+'"')
     if self.verbose:
-      sys.stderr.write("\r If this program hangs, press Ctrl-C")
+      #print cmd
+      sys.stderr.write("\rOpening new window, if this program hangs, press Ctrl-C")
       sys.stderr.flush()
       
     r = os.system(cmd)
-    self.fd = os.open(self.fifoname, os.O_WRONLY)
+    self.open_files()
+    coms.noblock(self.kd.fileno())
     #self.write(escape.ClearLine, '\r')
     
     if self.verbose:
@@ -102,7 +193,7 @@ class Window:
     
 
 
-  def __init__(self, title="", verbose=True, recreate=True):
+  def __init__(self, title="Terminal Window", verbose=True, recreate=True, key_out=coms.Input):
     """
     Creates another terminal that can be used. If the program is being called from within
     screen, it will use the command "screen" to create another screen in screen. Otherwise,
@@ -113,13 +204,22 @@ class Window:
     TODO: Are there programs similiar to screen?
     TODO: Being able to read input would be nice
     """
-    self.fifoname = tempfile.mktemp(prefix="terminal-")
+    self.fifoname = tempfile.mktemp(prefix="terminal-out-")
+    self.keysname = tempfile.mktemp(prefix="terminal-in-")
+    os.mkfifo(self.fifoname)
+    os.mkfifo(self.keysname)
     self.title = title
     self.verbose = verbose
     self.recreate = recreate
     self.fd = None
-    os.mkfifo(self.fifoname)
+    self.kd = None
+    self.key_out = key_out #coms.Input keys.stream
     self.create_terminal()
+    self.write(escape.ClearScreen)
+    self.size = None
+    self.ask_size()
+    self.write("\r")
+    self.write(escape.CursorHome)
 
 
 
@@ -136,13 +236,29 @@ if not(in_screen or in_x):
     raise SystemExit("Can not continue. You must either run this program with $DISPLAY set, or you must have screen installed.")
 
 
+
 if __name__ == '__main__':
   t = Window("Terminal Library Test Window")
-  print "Type stuff to be written into the other window."
-  t.write("This is the new window!\n")
+  winmsg = "Type stuff to be written into the other window."
+  t.write(winmsg+'\n')
+  import select
+  inp = coms.Input()
+  print winmsg
   while 1:
-    try:
-      t.write(raw_input()+'\n')
-    except (KeyboardInterrupt, EOFError):
-      break
-  
+    avail = select.select([inp.fileno(), t.kd.fileno()], [], [])
+    #print avail
+    if inp.fileno() in avail[0]:
+      try:
+        i = inp.read(1)
+        if i:
+          t.write(i)
+          #print "You wrote:", i
+      except (KeyboardInterrupt, EOFError):
+        break
+    #try:
+    if t.kd.fileno() in avail[0]:
+      o = t.read()
+      #print "Got:", `o`
+      sys.stdout.write(o.encode('utf'))
+      sys.stdout.flush()
+    #break
