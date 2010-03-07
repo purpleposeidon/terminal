@@ -110,7 +110,7 @@ class Window:
     except OSError as err:
       if kwargs.get('second') or not self.recreate:
         raise
-      if err.errno == 32 or err.strerror == "Broken pipe":
+      if (err.errno == 32) or (err.errno == 9):
         self.create_terminal() #Try to re-make the terminal
         self.write(*args, second=True)
       else:

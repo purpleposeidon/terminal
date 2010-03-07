@@ -32,8 +32,10 @@ def main(display_file, keys_file):
   df = coms.Input(display_file)
   kf = open(keys_file, 'w')
   def resize_handler(*args):
-    w, h = coms.termsize()
-    say_size(w, h, kf)
+    try:
+      w, h = coms.termsize()
+      say_size(w, h, kf)
+    except:pass
   signal.signal(signal.SIGWINCH, resize_handler)
   output = ''
   input_mode = 'r'

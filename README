@@ -1,3 +1,6 @@
+TODO:
+  tmux?
+
 When to use:
   You don't want to deal with the accursed curses.
   You want to use multiple windows (e.g, MDI)

@@ -69,7 +69,7 @@ class ModKey:
       all_keys[v] = k
 
 class KeyState:
-  def __init__(self, value, shift=False, ctrl=False, alt=False, single=False):
+  def __init__(self, value, shift=False, ctrl=False, alt=False, single=False, character=None):
     #If value is a single letter (w), it must be lower case.
     #If value is for a key name, it must be given in UPPER CASE
     self.value = value
@@ -77,8 +77,19 @@ class KeyState:
     self.ctrl = ctrl
     self.alt = alt
     self.single = single
+    if not character:
+      character = self.value
+    self.character = character
   def meta(self):
     return KeyState(self.value, shift=self.shift, ctrl=self.ctrl, alt=True, single=False)
+  def __in__(self, lizt):
+    for l in lizt:
+      if self == l:
+        return True
+  def __eq__(self, other):
+    if isinstance(other, KeyState):
+      return str(self) == str(other)
+    return other.lower() == self.value.lower()
   def __str__(self):
     v = self.value
     if self.shift:
@@ -116,16 +127,20 @@ ESCAPE_ENDS = "~ ?\n\t\a"+escape.ESC #These would never show up inside an escape
 #I think...
 
 
-def key_stream(fd, **kwargs):
+def stream(fd, **kwargs):
   #Yield KeyState
-  
+  if isinstance(fd, str):
+    fd = coms.Input(fd)
+  #fd.setblocking(True)
   while 1:
     for key in get_key(fd, **kwargs):
      yield key
 
 def get_key(fd, empty_is_eof=False, show_esc_fail=True):
   try: c = fd.read(1)
-  except IOError: c = ''
+  except IOError:
+    c = ''
+    return
   if c == '':
     if empty_is_eof:
       raise EOFError
@@ -140,7 +155,7 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=True):
       c += n #We'll have at least two characters
       result = all_keys.get(c, None)
       if result:
-        print c
+        #print c
         yield result
         return
       elif len(c) > 7 or n in ESCAPE_ENDS:
@@ -152,29 +167,29 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=True):
       #It's a meta key
       char = c[1]
       k = all_keys.get(char, nonce_key(char))
-      print `c`
+      #print `c`
       yield k.meta()
     elif show_esc_fail:
       #It's nothing that we know about
       for char in c:
-        print `c`
+        #print `c`
         yield all_keys.get(char, nonce_key(char))
   else:
     #A single key!
     if c == '\r':
       #Err, skip that.
       return
-    print `c`
+    #print `c`
     yield all_keys.get(c, nonce_key(c))
 
 
 #'''
 #Key data
 EscKey(KeyState("ESC", single=True), "\e")
-SpecialKey(KeyState("TAB", single=True), "\t")
-EscKey(KeyState("TAB", shift=True), "\e[Z")
-SpecialKey(KeyState("ENTER", single=True), '\n')
-EscKey(KeyState("ENTER", shift=True), '\eOM')
+SpecialKey(KeyState("TAB", single=True, character='\t'), "\t")
+EscKey(KeyState("TAB", shift=True, character='\t'), "\e[Z")
+SpecialKey(KeyState("ENTER", single=True, character='\n'), '\n')
+EscKey(KeyState("ENTER", shift=True, character='\n'), '\eOM')
 SpecialKey(KeyState("BACKSPACE", single=True), '\x7f')
 
 #These eat up meta-A 
@@ -244,7 +259,7 @@ ModKey("DELETE", "\E[3;*~")
 
 
 ##### Other keys, not copied from the Konsole dev's
-SpecialKey(KeyState("SPACE", single=True), ' ')
+SpecialKey(KeyState("SPACE", single=True, character=' '), ' ')
 #EscKey("PAGE UP", "\E[5~")
 #EscKey("PAGE DOWN", "\E[6~")
 ModKey("PAGE UP", "\E[5;*~") #XXX Mods don't match!
@@ -257,9 +272,9 @@ ModKey("PAGE DOWN", "\E[6;*~") #XXX Mods don't match!
 
 
 if __name__ == '__main__':
+  inp = coms.Input()
   try:
-    inp = coms.Input()
-    for _ in key_stream(inp):
+    for _ in stream(inp):
       sys.stdout.write(str(_)+'\n')
   except (KeyboardInterrupt, EOFError):
     pass

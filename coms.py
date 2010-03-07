@@ -12,22 +12,7 @@ import termios
 
 RESET_STDIN = False
 
-def termsize(default=(25, 80)):
-  """ Returns the (height, width) of the terminal. Stolen from somewhere."""
-  try:
-    #These are only very rarely defined.
-    l, w = default
-    try: l = int(os.environ["LINES"])
-    except: pass
-    try: w = int(os.environ["COLUMNS"])
-    except: pass
-    return l, w
-  except KeyError:
-    f = fcntl.ioctl(1, termios.TIOCGWINSZ, "\x00"*8)
-    height, width = struct.unpack("hhhh", f)[0:2]
-    if not height:
-      return default
-    return height, width
+
 
 
 class Input:
@@ -43,6 +28,7 @@ class Input:
     self.fd = codecs.open(file_name, 'r', encoding='utf', errors='replace')
     #Do I fail as a programmer, or is it impossible to subclass codecs.StreamReader?
     
+    self.orig_flags = None
     
     self.read = self.fd.read
     self.flush = self.fd.flush
@@ -60,6 +46,20 @@ class Input:
     self.setblocking(True)
     self.fd.close()
 
+def termsize(default=(25, 80)):
+  """ Returns the (height, width) of the terminal. Stolen from somewhere."""
+  try:
+    #These are only very rarely defined.
+    l, w = default
+    l = int(os.environ["LINES"])
+    w = int(os.environ["COLUMNS"])
+    return l, w
+  except KeyError:
+    f = fcntl.ioctl(1, termios.TIOCGWINSZ, "\x00"*8)
+    height, width = struct.unpack("hhhh", f)[0:2]
+    if not height:
+      return default
+    return height, width
 
 @atexit.register
 def repair_terminal():
@@ -71,6 +71,7 @@ def repair_terminal():
 
 #stolen termios voodoo code is stolen magic voodoo.
 #I've quite forgotten where it comes from.
+#But these are completely changed from what they were originally anyways
 
 def cleanup(old_term_flags, fd):
   """Return terminal to sanity, remove plumbing"""
@@ -81,24 +82,48 @@ def cleanup(old_term_flags, fd):
   except:
     pass
 
-
-def setup(fd):
-  """Puts the terminal the way we want it. This code is also stolen.
-  It turns off echo, and puts the terminal into non-blocking mode.
-  Returns a tuple of flags that should be used with cleanup()
-  """
-  
-  oldterm = termios.tcgetattr(fd)
-  newattr = oldterm[:]
+def yesecho(fd):
   try:
-    newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
+    oldterm = termios.tcgetattr(fd)
+    newattr = oldterm[:]
+    newattr[3] = newattr[3] & ~termios.ICANON | termios.ECHO
     termios.tcsetattr(fd, termios.TCSANOW, newattr)
   except:
     #It's likely that fd isn't a tty, or something?
     pass
+  return oldterm
+
+def noecho(fd):
+  try:
+    oldterm = termios.tcgetattr(fd)
+    newattr = oldterm[:]
+    newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
+    termios.tcsetattr(fd, termios.TCSANOW, newattr)
+    return oldterm
+  except:
+    #It's likely that fd isn't a tty, or something?
+    pass
   
+
+def noblock(fd):
   oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
   fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
+  return oldflags
+
+def yesblock(fd):
+  oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
+  fcntl.fcntl(fd, fcntl.F_SETFL, oldflags & ~os.O_NONBLOCK)
+  return oldflags
+
+def setup(fd):
+  """turns off echo, and puts the terminal into non-blocking mode.
+  Returns a tuple of flags that should be used with cleanup()
+  """
+  oldterm = noecho(fd)
+  oldflags = noblock(fd)
+  if fd == 0:
+    global RESET_STDIN
+    RESET_STDIN = True
   return oldterm, oldflags
 
 
@@ -110,7 +135,8 @@ ORIG_STDIN_FLAGS = __oldterm, __oldflags
 
 if __name__ == '__main__':
   print "Reverses the case of the text you write"
-  print "It also uses 100% of a core"
+  print "(It also uses 100% of a core)"
+  print "Close with ^C"
   f = Input()
   while 1:
     c = None

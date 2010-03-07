@@ -21,16 +21,20 @@ import sys
 import escape
 import coms
 
+import keys
+from keys import KeyState
+
 class Reader:
   """
   A non-blocking readline implementation
   """
-  def __init__(self, prefix='', savehistory=True):
+  def __init__(self, fd='/dev/stdin', prefix='', savehistory=True):
     self.lines = []
     self.lines_index = 0
     self.buffer = []
     self.index = 0
-    self.i = coms.Input()
+    self.fd = coms.Input(fd)
+    #self.i = keys.stream(self.fd)
     self.prefix = prefix
     self.savehistory = savehistory
     self.redraw()
@@ -46,7 +50,8 @@ class Reader:
     else:
       sys.stderr.write(escape.CursorLeft(len(self.buffer)-self.index))
   def __del__(self):
-    if escape: escape.cleanup(self.i.fileno())
+    self.fd.close()
+    #if escape: escape.cleanup(self.i.fileno())
   def add_history(self, buff):
     b = ''.join(buff)
     if b:
@@ -57,97 +62,86 @@ class Reader:
         self.lines.append(buff)
   def readline(self):
     """Returns:
-    None if enter wasn't pressed
-    A str containing the buffer if it was..."""
+      None if enter wasn't pressed
+      A str containing the buffer if it was
+    """
     escape_sequence = []
     c = ''
-    while 1:
-      try:
-        c = self.i.read(1)
-        if c == '':
-          break
-      except IOError:
-        break
-      if c == escape.ESC:
-        escape_sequence.append(c)
-      elif escape_sequence:
-        escape_sequence.append(c)
-        e = ''.join(escape_sequence)
-        if str(escape.CursorLeft) in e:
-          self.index = max(0, self.index-1)
-          self.redraw()
-        elif str(escape.CursorRight) in e:
-          self.index = min(len(self.buffer), self.index+1)
-          self.redraw()
-        elif escape.CSI+'1;5D' in e: #Ctrl-left
+    
+    #while 1:
+      #try:
+        #c = next(self.i)
+        #if c == '':
+          #break
+      #except StopIteration:
+        #break
+    #if 1:
+    for c in keys.get_key(self.fd):
+      if c == KeyState('LEFT'):
+        self.index = max(0, self.index-1)
+        self.redraw()
+      elif c == KeyState('RIGHT'):
+        self.index = min(len(self.buffer), self.index+1)
+        self.redraw()
+      elif c == KeyState("LEFT", ctrl=True): #Ctrl-left
+        self.index -= 1
+        while self.index > 0 and self.buffer[self.index] in ' ':
           self.index -= 1
-          while self.index > 0 and self.buffer[self.index] in ' ':
-            self.index -= 1
-          while self.index > 0 and self.buffer[self.index] not in ' ':
-            self.index -= 1
-          self.redraw()
-        elif escape.CSI+'1;5C' in e: #Ctrl-right
-          l = len(self.buffer)
-          while self.index < l and self.buffer[self.index] in ' ':
-            self.index += 1
-          while self.index < l and self.buffer[self.index] not in ' ':
-            self.index += 1
-          self.redraw()
-        elif str(escape.CursorHome) in e or e == escape.CSI+'1~':
-          sys.stderr.write(escape.CursorLeft(self.index))
-          self.index = 0
-        elif str(escape.CursorEnd) in e or e == escape.CSI+'4~':
-          self.index = len(self.buffer)
-          self.redraw()
-        elif str(escape.CursorUp) in e and self.lines_index >= 0:
+        while self.index > 0 and self.buffer[self.index] not in ' ':
+          self.index -= 1
+        self.redraw()
+      elif c == KeyState("RIGHT", ctrl=True): #Ctrl-right
+        l = len(self.buffer)
+        while self.index < l and self.buffer[self.index] in ' ':
+          self.index += 1
+        while self.index < l and self.buffer[self.index] not in ' ':
+          self.index += 1
+        self.redraw()
+      elif c == 'Home':
+        sys.stderr.write(escape.CursorLeft(self.index))
+        self.index = 0
+      elif c == 'End':
+        self.index = len(self.buffer)
+        self.redraw()
+      elif c == 'Up' and self.lines_index >= 0:
+        self.add_history(self.buffer)
+        self.lines_index = max(0, self.lines_index - 1)
+        try:
+          self.buffer = list(self.lines[self.lines_index])
+        except:
+          if self.lines: self.buffer = self.lines[-1]
+        self.index = len(self.buffer)
+        self.redraw()
+      elif c == 'Down':
+        if self.lines_index < len(self.lines) - 1:
           self.add_history(self.buffer)
-          self.lines_index -= 1
-          if self.lines_index == -1:
-            self.lines_index = 0
-          try:
-            self.buffer = list(self.lines[self.lines_index])
-          except:
-            if self.lines: self.buffer = self.lines[-1]
-          self.index = len(self.buffer)
-          self.redraw()
-        elif str(escape.CursorDown) in e:
-          if self.lines_index < len(self.lines) - 1:
-            self.add_history(self.buffer)
-            self.lines_index += 1
-            self.buffer = list(self.lines[self.lines_index])
-          else:
-            self.buffer = []
-          self.index = len(self.buffer)
-          self.redraw()
-        elif e == escape.CSI+'3~': #Delete
-          if self.index < len(self.buffer):
-            self.buffer.pop(self.index)
-            self.redraw()
+          self.lines_index += 1
+          self.buffer = list(self.lines[self.lines_index])
         else:
-          if self.buffer == ['?']:
-            print
-            print escape_sequence
-            print
-            self.redraw()
-          continue
-        escape_sequence = []
-      elif c == '\n':
+          self.buffer = []
+        self.index = len(self.buffer)
+        self.redraw()
+      elif c == 'Delete': #Delete
+        if self.index < len(self.buffer):
+          self.buffer.pop(self.index)
+          self.redraw()
+      elif c == 'Enter':
         r = ''.join(self.buffer)
         self.add_history(self.buffer)
         self.buffer = []
         self.lines_index = len(self.lines)
         self.index = 0
         return r
-      elif c == '\x04': #^D
+      elif c == KeyState("D", ctrl=True): #^D
         raise EOFError
-      elif c == '\x7f': #^? == backspace
+      elif c == "Backspace": #^? == backspace
         try:
           self.index -= 1
           self.index = max(0, self.index)
           self.buffer.pop(self.index)
         except: pass
         self.redraw()
-      elif c == '\x17': #^W == delete word
+      elif c == KeyState("W", ctrl=True): #^W == delete word
         word_breaks = ' ._[]'
         if self.buffer:
           while self.index:
@@ -158,17 +152,17 @@ class Reader:
             if self.buffer[self.index-1] in word_breaks:
               break
           self.redraw()
-      elif c == '\x0c': #^L == Redraw
+      elif c == KeyState("L", ctrl=True): #^L == Redraw
         self.redraw()
-      else:
-        if c == '\t':
+      elif c.single:
+        c = c.character
+        if c == "\t":
           #Replaces tabs with spaces, because I suck.
           tab_len = 4
           c = ' '*tab_len
           for _ in c:
             self.buffer.insert(self.index, _)
             self.index += 1
-
         else:
           self.buffer.insert(self.index, c)
           self.index += len(c)
@@ -177,8 +171,7 @@ class Reader:
           sys.stderr.flush()
         else:
           self.redraw()
-    if c:
-      return False #bool(False) == bool(None), however, False means something happened
+
 
 
 
@@ -187,16 +180,16 @@ if __name__ == '__main__':
   r = Reader()
   print
   while 1:
-    try:
-      time.sleep(.1)
-      c = r.readline()
-    except (KeyboardInterrupt, EOFError):
-      break
+    try: c = r.readline()
+    except EOFError: break
+    except KeyboardInterrupt: break
     if c:
       print
-      print repr(c), '=', c
-      print
+      print c
       if c.strip() == 'exit':
         break
-    print escape.CursorUp, escape.CursorReturn, time.time()
+      print
+    else:
+      print escape.CursorUp, escape.CursorReturn, time.time()
     r.redraw()
+    time.sleep(.1)

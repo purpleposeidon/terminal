@@ -15,7 +15,11 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import time
+import weakref
+
 import escape
+import window
 
 
 class Character:
@@ -40,26 +44,33 @@ class Character:
 EMPTY_CHAR = Character(' ')
 
 class CharacterBuffer:
-  def __init__(self, width, height, fd, offset=(0, 0)):
-    self.width = width
-    self.height = height
-    self.fd = fd
+  def __init__(self, dims, fd, offset=(0, 0)):
+    self.width, self.height = dims
+    self.cfd = fd
     self.dx, self.dy = offset
     
     self.buff = {} #form [(x, y)] = Character
     self.changed = {} #form (x, y) = Character
     self.needs_full_redraw = True
+    self.draw()
 
   def resize(self, width, height):
-    self.width = width
-    self.height = height
+    if (self.width, self.height) != (width, height):
+      if (width < self.width) or (height < self.height):
+        self.needs_full_redraw = True
+      self.width = width
+      self.height = height
 
   def set_fd(self, fd):
-    if self.fd != fd:
-      self.fd = fd
+    if self.cfd != fd:
+      self.cfd = fd
       self.needs_full_redraw = True
 
   def add(self, x, y, char, attr=escape.GRAY):
+    """
+    Set a drawing.Character or a str at position x, y.
+    attr is used to set color, bold, and such. It is only used with str
+    """
     #Put char at x, y
     if isinstance(char, Character):
       if self.buff.get((x, y), None) != char:
@@ -72,22 +83,22 @@ class CharacterBuffer:
   
   def redraw(self):
     #Re-draw everything
-    self.fd.write(str(escape.CursorHome))
+    self.cfd.write(str(escape.CursorHome))
     if self.dy:
       #Top offset
-      self.fd.write(escape.CursorDown(self.dy))
+      self.cfd.write(escape.CursorDown(self.dy))
     last_attr = None
     for y in range(self.height):
       if self.dx:
-        self.fd.write(escape.CursorRight(self.dx)) #Left offset
+        self.cfd.write(escape.CursorRight(self.dx)) #Left offset
       for x in range(self.width):
         c = self.buff.get((x, y), EMPTY_CHAR)
-        self.fd.write(c.format(last_attr))
+        self.cfd.write(c.format(last_attr))
         last_attr = c.attr
-      self.fd.write(str(escape.CursorReturn)+str(escape.NewLine))
+      self.cfd.write(str(escape.CursorReturn)+str(escape.NewLine))
     self.needs_full_redraw = False
     self.changed = {}
-    self.fd.flush()
+    self.cfd.flush()
   
   def draw(self):
     if self.needs_full_redraw:
@@ -95,7 +106,7 @@ class CharacterBuffer:
       return
     cx = cy = None
     last_attr = None
-    #self.fd.write(str(escape.CursorHome))
+    #self.cfd.write(str(escape.CursorHome))
     for y in range(self.height):
       for x in range(self.width):
         c = self.changed.get((x, y))
@@ -105,31 +116,59 @@ class CharacterBuffer:
           #This is probably where the most optimization can come from
           if cx == cy == None:
             if x == y == 0:
-              self.fd.write(str(escape.CursorHome))
+              self.cfd.write(str(escape.CursorHome))
             else:
-              self.fd.write(escape.CursorSet(x+self.dx+1, y+self.dy+1))
+              self.cfd.write(escape.CursorSet(x+self.dx+1, y+self.dy+1))
           elif x == 0 and (cy+1 == y):
-            self.fd.write(escape.NewLine())
+            self.cfd.write(escape.NewLine())
           elif (cx+1 == x) and (cy == y):
             pass #Just to the right, so do nothing
           elif (cx == x) and (cy != y):
             #Just move the y cursor
-            self.fd.write(escape.CursorDown(cy-y))
+            self.cfd.write(escape.CursorDown(cy-y))
           elif (cy == y) and (cx != x):
-            self.fd.write(escape.CursorRight(x-cx))
+            self.cfd.write(escape.CursorRight(x-cx))
           else:
-            self.fd.write(escape.CursorSet(y+self.dy+1, x+self.dx+1))
-          self.fd.write(c.format(last_attr))
+            self.cfd.write(escape.CursorSet(y+self.dy+1, x+self.dx+1))
+          self.cfd.write(c.format(last_attr))
           last_attr = c.attr
           cx, cy = x, y
     self.changed = {}
     if not (cx == cy == None):
-      self.fd.flush()
+      self.cfd.flush()
+
+class WindowBuffer(window.Window, CharacterBuffer):
+  def __init__(self, title="Drawing Window"):
+    """
+    A CharacterBuffer that resides in a new window
+    """
+    #self.window = window.Window(title=title)
+    window.Window.__init__(self, title=title)
+    fail = 0
+    while not self.size:
+      self.ask_size()
+      time.sleep(.01*fail**2+.01)
+      self.read()
+      fail += 1
+      if fail == 10:
+        raise Exception("Window did not tell us the size!")
+    self.old_size = self.size
+    CharacterBuffer.__init__(weakref.proxy(self), self.size, weakref.proxy(self)) #proxy so that there isn't a circular ref.
+    
+  def draw(self):
+    if self.old_size != self.size:
+      self.needs_full_redraw = True
+      self.old_size = self.size
+    CharacterBuffer.draw(self)
+
+
 
 if __name__ == '__main__':
   import sys, time
-  cb = CharacterBuffer(20, 3, sys.stdout)
-  cb.draw()
+  if len(sys.argv) == 1:
+    cb = CharacterBuffer([20, 3], sys.stdout)
+  else:
+    cb = WindowBuffer()
   cb.add(0, 0, Character(':'))
   cb.add(1, 0, Character('D'))
   cb.add(0, 1, Character("!"))
