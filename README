@@ -1,22 +1,24 @@
-TODO:
-  tmux?
-
 When to use:
-  You don't want to deal with the accursed curses.
-  You want to use multiple windows (e.g, MDI)
   You just want color/attributes, without dealing with the accursed curses
-  You need to do do curses on files other than stdout.
+  You don't want to deal with the above mentioned accursed
+  You want to use multiple terminals
+  You need to do terminal-manipulations on files other than stdout
+  You want unicode (py3k supports unicode)
 
 When not to use:
-  When you've got to support non-typical terminals
-
+  When you've got to support non-typical terminals (konsole is what I devel on)
+  When you want to have multiple documents in a single window, and you want scrolling. (Perhaps scrolling in general? I guess at this)
 
 The Modules:
   escape.py
-    Various escape sequences.
+    Various escape sequences. Use to set text attributes.
   lineread.py
-    To get a line of input. Has a shoddy history buffer that can be disabled.
-  termwindow.py
-    Creates output-only terminal windows.
-  termbuffer.py
-    Only print out changes to the terminal window
+    To get a line of input, like a non-blocking readline. Has a shoddy history buffer that can be disabled.
+  window.py
+    Code for creating new terminal window.
+  drawing.py
+    To only write out changes. (for roguelikes)
+  coms.py
+    Terminal configuration
+  keys.py
+    Intepret key codes
