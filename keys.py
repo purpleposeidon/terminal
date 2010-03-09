@@ -144,6 +144,9 @@ ESCAPE_ENDS = "~ ?\n\t\a"+escape.ESC #These would never show up inside an escape
 
 
 def stream(fd, **kwargs):
+  """
+  An iterator. Yields KeyState objects.
+  """
   intr_key = kwargs.get("intr_key", KeyState('C', ctrl=True))
   if type(fd) == int:
     fileno = fd
@@ -165,7 +168,7 @@ def stream(fd, **kwargs):
     coms.DISABLE_TERM_SIG = False
     coms.apply_ctrl_settings(fileno)
 
-def get_key(fd, empty_is_eof=False, show_esc_fail=True):
+def get_key(fd, empty_is_eof=False, show_esc_fail=True, **kwargs):
   #print fd
   try: c = fd.read(1)
   except IOError:
