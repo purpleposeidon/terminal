@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 
 """
-Todo
+TODO
   liscense boilerplate
 
 Bugs
   Numpad is a terrifying mess
+
+Notes:
+  If ctrl is used, case (shift vs. no shift) is lost. Assumes upper.
+  Alt just proceeds whatever follows with an escape.
+  Logo (Meta?) only works for ModKeys (F1, Home...)
 """
 
 import sys
@@ -46,13 +51,16 @@ class EscKey(SpecialKey):
 
 
 class ModKey:
-  mods = \
-    ['2', {"shift":True}], \
-    ['3', {"alt": True}], \
-    ['4', {"shift":True, "alt":True}], \
-    ['5', {"ctrl":True}], \
-    ['6', {"shift":True, "ctrl":True}], \
-    ['7', {"ctrl": True, "alt": True}]
+  #Err, I guess? It's the logo...
+  mods = (
+    ['1', {"logo": True}],
+    ['2', {"shift":True}],
+    ['3', {"alt": True}],
+    ['4', {"shift":True, "alt":True}],
+    ['5', {"ctrl":True}],
+    ['6', {"shift":True, "ctrl":True}],
+    ['7', {"ctrl": True, "alt": True}],
+  )
   def __init__(self, name, value):
     #Makes its own KeyState, okay?
     value = value.replace('\E', escape.ESC).replace('\e', escape.ESC)
@@ -69,13 +77,14 @@ class ModKey:
       all_keys[v] = k
 
 class KeyState:
-  def __init__(self, value, shift=False, ctrl=False, alt=False, single=False, character=None):
+  def __init__(self, value, shift=False, ctrl=False, alt=False, logo=False, single=False, character=None):
     #If value is a single letter (w), it must be lower case.
     #If value is for a key name, it must be given in UPPER CASE
     self.value = value
     self.shift = shift
     self.ctrl = ctrl
     self.alt = alt
+    self.logo = logo
     self.single = single
     if not character:
       character = self.value
@@ -94,30 +103,37 @@ class KeyState:
     v = self.value
     if self.shift:
       v = v.upper()
-      if v == self.value:
+      #if (v == self.value) or (len(v) > 1):
+      if (len(v) > 1):
         v = 'Shift-'+self.value.encode("utf")
       v = v.title()
     elif self.value == self.value.upper():
       v = v.title()
-    v = self.value.encode("utf")
+    v = v.encode("utf")
+    if self.logo:
+      v = 'Logo-'+v
     if self.alt:
       v = 'Alt-'+v
     if self.ctrl:
       v = 'Ctrl-'+v
-    if len(self.value) == 1:
+    
+    #if len(v) == 1:
+    if (self.ctrl == self.alt == self.logo == False) and len(self.value) == 1:
       return v+"-key"
     else:
-      return v.title()
+      return v #.title()
   __repr__ = __str__
 
 
 #CtrlKey is the easiest
 ctrl_offset = 64
-for dalpha in range(27):
+for dalpha in range(32): #Hell with it...
   SpecialKey(KeyState(chr(ctrl_offset+dalpha), ctrl=True), chr(dalpha))
 
 
 def nonce_key(c):
+  
+  #assert isinstance(c, unicode)
   if (c.upper() == c) and (c.lower() != c):
     return KeyState(c, shift=True, single=True)
   else:
@@ -128,15 +144,29 @@ ESCAPE_ENDS = "~ ?\n\t\a"+escape.ESC #These would never show up inside an escape
 
 
 def stream(fd, **kwargs):
-  #Yield KeyState
-  if isinstance(fd, str):
-    fd = coms.Input(fd)
-  #fd.setblocking(True)
-  while 1:
-    for key in get_key(fd, **kwargs):
-     yield key
+  intr_key = kwargs.get("intr_key", KeyState('C', ctrl=True))
+  if type(fd) == int:
+    fileno = fd
+  else:
+    fileno = fd.fileno()
+  try:
+    coms.DISABLE_TERM_SIG = True
+    coms.apply_ctrl_settings(fileno)
+    #Yield KeyState
+    if isinstance(fd, str):
+      fd = coms.Input(fd)
+    #fd.setblocking(True)
+    while 1:
+      for key in get_key(fd, **kwargs):
+        if key == intr_key:
+          raise KeyboardInterrupt
+        yield key
+  finally:
+    coms.DISABLE_TERM_SIG = False
+    coms.apply_ctrl_settings(fileno)
 
 def get_key(fd, empty_is_eof=False, show_esc_fail=True):
+  #print fd
   try: c = fd.read(1)
   except IOError:
     c = ''
@@ -151,17 +181,21 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=True):
       except IOError: n = ''
       if n == '':
         #XXX If you wanted, you might be willing to look again really quickly!
+        #print "Got", `c`
         break
+      #print n
       c += n #We'll have at least two characters
       result = all_keys.get(c, None)
       if result:
         #print c
+        #print "Got", `c`
         yield result
         return
       elif len(c) > 7 or n in ESCAPE_ENDS:
         #There's definitly something wrong!
-        print "What? Got", `c`
+        #print "What? Got", `c`
         break
+      
     
     if len(c) == 2:
       #It's a meta key
@@ -259,11 +293,15 @@ ModKey("DELETE", "\E[3;*~")
 
 
 ##### Other keys, not copied from the Konsole dev's
+#(But they're probably listed there anyways. >_>)
 SpecialKey(KeyState("SPACE", single=True, character=' '), ' ')
 #EscKey("PAGE UP", "\E[5~")
 #EscKey("PAGE DOWN", "\E[6~")
 ModKey("PAGE UP", "\E[5;*~") #XXX Mods don't match!
 ModKey("PAGE DOWN", "\E[6;*~") #XXX Mods don't match!
+SpecialKey(KeyState("ENTER", alt=True, shift=True), "\E\EOM")
+#SpecialKey(KeyState("/", ctrl=True), "\x1f")
+#SpecialKey(KeyState("\\", ctrl=True), "\x1c") #QUIT, actually
 #I think part of the problem is that most terminals scroll up with this...
 
 #'''
@@ -272,10 +310,23 @@ ModKey("PAGE DOWN", "\E[6;*~") #XXX Mods don't match!
 
 
 if __name__ == '__main__':
+  print """Prints the keys you press. These should work:
+    a (ascii)
+    ú (latin unicode)
+    う (crazy-ass unicode. I don't know how to do modifiers with these...)
+    alt-u
+    alt-ú (For me, left alt+right alt+u w/ international keyboard)
+    Logo-F1
+    Logo-Page Up (Logo only happens with this class of keys)
+    alt-Ú
+
+Exit with ctrl-C
+  """
   inp = coms.Input()
   try:
     for _ in stream(inp):
       sys.stdout.write(str(_)+'\n')
+      pass
   except (KeyboardInterrupt, EOFError):
     pass
   finally:

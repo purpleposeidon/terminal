@@ -10,8 +10,34 @@ import struct
 import termios
 
 
-RESET_STDIN = False
+"""
+DISABLE_FLOWCONTROL is enabled by default. With this, the program can catch ^S and ^Q.
+DISABLE_TERM_SIG is *disabled* by default. You'd better be a fabulous programmer if you turn this on; otherwise the user won't be able to force your program to quit with ^C or whatever.
 
+Default settings:
+  Non-blocking
+  Flow control disabled
+  Interrupts enabled
+  No echo AND Character-at-a-time
+
+To block:
+  coms.Input(blocking=True)
+Enable flow control:
+  coms.DISABLE_FLOWCONTROL = False
+  coms.apply_ctrl_settings(fd)
+Disable interrupts:
+  coms.DISABLE_TERM_SIG = True
+  coms.apply_ctrl_settings(fd)
+Echo AND line-buffered mode:
+  coms.yesecho(fd)
+
+"""
+
+DISABLE_FLOWCONTROL = True
+DISABLE_TERM_SIG = False
+
+
+RESET_STDIN = False
 
 
 
@@ -86,7 +112,8 @@ def yesecho(fd):
   try:
     oldterm = termios.tcgetattr(fd)
     newattr = oldterm[:]
-    newattr[3] = newattr[3] & ~termios.ICANON | termios.ECHO
+    newattr[3] = newattr[3] & ~termios.ICANON | termios.ECHO #& ~termios.IXOFF #| termios.ISIG
+    #newattr[0] |= (termios.IXOFF | termios.IXON)
     termios.tcsetattr(fd, termios.TCSANOW, newattr)
   except:
     #It's likely that fd isn't a tty, or something?
@@ -97,13 +124,26 @@ def noecho(fd):
   try:
     oldterm = termios.tcgetattr(fd)
     newattr = oldterm[:]
-    newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO
+    newattr[3] = newattr[3] & ~termios.ICANON & ~termios.ECHO #& ~termios.IXOFF #& ~termios.ISIG
+    apply_ctrl_settings(fd)
     termios.tcsetattr(fd, termios.TCSANOW, newattr)
     return oldterm
   except:
     #It's likely that fd isn't a tty, or something?
     pass
-  
+
+def apply_ctrl_settings(fd):
+  oldterm = termios.tcgetattr(fd)
+  newattr = oldterm[:]
+  if DISABLE_FLOWCONTROL:
+    newattr[0] &= ~(termios.IXOFF | termios.IXON)
+  else:
+    newattr[0] |= (termios.IXOFF | termios.IXON)
+  if DISABLE_TERM_SIG:
+    newattr[3] &= ~termios.ISIG
+  else:
+    newattr[3] |= termios.ISIG
+  termios.tcsetattr(fd, termios.TCSANOW, newattr)
 
 def noblock(fd):
   oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
