@@ -41,16 +41,18 @@ def main(display_file, keys_file):
   input_mode = 'r'
   line_reader = lineread.Reader()
   first = True
+  
   while 1:
     try:
       avail = select.select([line_reader.fd, df], [], [])
     except select.error as err:
       #print err
       #print err.args
-      if err.args[0] == 4:
-        #This is alright, there's been a resize
+      if err.args[0] == 4: #XXX 4? What?
+        #This is alright, this happens when there's been a SIGWINCH
         continue
       raise
+    wrote_output = False
     if first or (df in avail[0]):
       if not output:
         output = ''
@@ -59,6 +61,7 @@ def main(display_file, keys_file):
           except IOError: break
       #print `output`
       output = unicode(output)
+      wrote_output = True
       while output:
         if output.startswith(window.GetSize):
           h, w = coms.termsize()
@@ -92,10 +95,13 @@ def main(display_file, keys_file):
           output = output.replace(window.NullEscape, '', 1)
         else:
           sys.stdout.write(output[0])
-        output = output[1:]
+          output = output[1:]
           #sys.stdout.flush()
       output = ''
       sys.stdout.flush()
+    if wrote_output:
+      if input_mode == 'R':
+        line_reader.redraw()
     #if 1: #line_reader.fd in avail:
     if first or (line_reader.fd in avail[0]):
       #print 'get keypress'

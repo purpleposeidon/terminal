@@ -2,3 +2,6 @@ python window.py; why do escapes trail? (Because you don't read it all?)
 put liscensing in everything
 tmux?
 test suites!
+popen, and use it's callback, for window.py
+
+Check for infinite loops on window close in all those tests

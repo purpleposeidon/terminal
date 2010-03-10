@@ -14,9 +14,11 @@ Notes:
 """
 
 import sys
+import time
 
 import escape
 import coms
+import window
 
 all_keys = {}
 
@@ -143,36 +145,43 @@ ESCAPE_ENDS = "~ ?\n\t\a"+escape.ESC #These would never show up inside an escape
 #I think...
 
 
-def stream(fd, **kwargs):
+def stream(fd=sys.stdin, intr_key=KeyState('C', ctrl=True), **kwargs):
   """
-  An iterator. Yields KeyState objects.
+  ``fd'' is the file-like object. It defaults to stdin. If overiding, use coms.Input(filename).
+  Iterator yields KeyState objects.
+   ^S and ^Q doesn't do flow control, ^\ doesn't quit.
+  ^C has been implemented, but it can be over-ridden. Set to None to prevent KeyboardInterrupt, or set to a different KeyState to change it.
   """
-  intr_key = kwargs.get("intr_key", KeyState('C', ctrl=True))
-  if type(fd) == int:
-    fileno = fd
-  else:
-    fileno = fd.fileno()
+  
+  fileno = None
   try:
-    coms.DISABLE_TERM_SIG = True
-    coms.apply_ctrl_settings(fileno)
-    #Yield KeyState
-    if isinstance(fd, str):
-      fd = coms.Input(fd)
-    #fd.setblocking(True)
+    #Set up the terminal. (Could be a remote window, needs special treatment)
+    if isinstance(fd, window.Window):
+      fd.config(fd.input_mode('r'))
+      #print `fd.config_string`
+    else:
+      fileno = fd.fileno()
+      coms.DISABLE_TERM_SIG = True
+      coms.apply_ctrl_settings(fileno)
+    
     while 1:
       for key in get_key(fd, **kwargs):
         if key == intr_key:
-          raise KeyboardInterrupt
+          raise KeyboardInterrupt(str(key))
         yield key
+      yield None
   finally:
-    coms.DISABLE_TERM_SIG = False
-    coms.apply_ctrl_settings(fileno)
+    if fileno:
+      coms.DISABLE_TERM_SIG = False
+      coms.apply_ctrl_settings(fileno)
 
-def get_key(fd, empty_is_eof=False, show_esc_fail=True, **kwargs):
+def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
+  """
+  This function does the work of returning a KeyState.
+  """
   #print fd
   try: c = fd.read(1)
   except IOError:
-    c = ''
     return
   if c == '':
     if empty_is_eof:
@@ -189,9 +198,43 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=True, **kwargs):
       #print n
       c += n #We'll have at least two characters
       result = all_keys.get(c, None)
+      #print 'it is escape stuff', `c`, 'is', result
       if result:
         #print c
         #print "Got", `c`
+        #It matches something, however, there may be longer escape sequences
+        #(Grumble grumble...)
+        possible_matches = [k for k in all_keys if k.startswith(c)]
+        #print possible_matches
+        peek = ''
+        OUTTA_CONTINE = False
+        while 1:
+          try:
+            time.sleep(.1)
+            fd.flush()
+            x = fd.read()
+            peek += x
+            if not x: raise IOError
+          except IOError:
+            #print "nope. Peekage:", `peek`
+            break
+          possible_matches = [k for k in possible_matches if k.startswith(c+peek)]
+          #print "We've got:", possible_matches
+          if len(possible_matches) == 1:
+            #This is good, yes?
+            r = all_keys[possible_matches[0]]
+            if r:
+              yield r
+              return
+            else:
+              #Isn't complete. Get more characters.
+              c += peek
+              OUTTA_CONTINE = True
+              break
+          elif len(possible_matches) == 0:
+            raise Exception("Oh god it is broken")
+        if OUTTA_CONTINE:
+          continue
         yield result
         return
       elif len(c) > 7 or n in ESCAPE_ENDS:
@@ -206,7 +249,8 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=True, **kwargs):
       k = all_keys.get(char, nonce_key(char))
       #print `c`
       yield k.meta()
-    elif show_esc_fail:
+    #elif show_esc_fail:
+    else:
       #It's nothing that we know about
       for char in c:
         #print `c`
@@ -260,19 +304,7 @@ EscKey("END", "\EOF")
 ModKey("HOME", "\E[1;*H")
 ModKey("END", "\E[1;*F")
 
-EscKey("F1", "\EOP")
-EscKey("F2", "\EOQ")
-EscKey("F3", "\EOR")
-EscKey("F4", "\EOS")
-EscKey("F5", "\E[15~")
-EscKey("F6", "\E[17~")
-EscKey("F7", "\E[18~")
-EscKey("F8", "\E[19~")
-EscKey("F9", "\E[20~")
-EscKey("F10", "\E[21~")
-EscKey("F11", "\E[23~")
-EscKey("F12", "\E[24~")
-
+#ModKey takes care of cases where no modifier info is given
 ModKey("F1", "\EO*P")
 ModKey("F2", "\EO*Q")
 ModKey("F3", "\EO*R")
@@ -298,14 +330,14 @@ ModKey("DELETE", "\E[3;*~")
 ##### Other keys, not copied from the Konsole dev's
 #(But they're probably listed there anyways. >_>)
 SpecialKey(KeyState("SPACE", single=True, character=' '), ' ')
-#EscKey("PAGE UP", "\E[5~")
-#EscKey("PAGE DOWN", "\E[6~")
-ModKey("PAGE UP", "\E[5;*~") #XXX Mods don't match!
-ModKey("PAGE DOWN", "\E[6;*~") #XXX Mods don't match!
-SpecialKey(KeyState("ENTER", alt=True, shift=True), "\E\EOM")
+ModKey("PAGE UP", "\E[5;*~")
+ModKey("PAGE DOWN", "\E[6;*~")
+
+EscKey(KeyState("ENTER", alt=True, shift=True), "\E\EOM")
+EscKey(KeyState("ESC", alt=True), "\E\E")
 #SpecialKey(KeyState("/", ctrl=True), "\x1f")
 #SpecialKey(KeyState("\\", ctrl=True), "\x1c") #QUIT, actually
-#I think part of the problem is that most terminals scroll up with this...
+
 
 #'''
 
@@ -317,6 +349,7 @@ if __name__ == '__main__':
     a (ascii)
     ú (latin unicode)
     う (crazy-ass unicode. I don't know how to do modifiers with these...)
+    Escape
     alt-u
     alt-ú (For me, left alt+right alt+u w/ international keyboard)
     Logo-F1
@@ -325,11 +358,14 @@ if __name__ == '__main__':
 
 Exit with ctrl-C
   """
+  import select
   inp = coms.Input()
   try:
+    select.select([inp], [],[])
     for _ in stream(inp):
-      sys.stdout.write(str(_)+'\n')
-      pass
+      if _:
+        sys.stdout.write(str(_)+'\n')
+      select.select([inp], [],[])
   except (KeyboardInterrupt, EOFError):
     pass
   finally:

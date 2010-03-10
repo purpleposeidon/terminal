@@ -20,6 +20,7 @@ import sys
 
 import escape
 import coms
+import window
 
 import keys
 from keys import KeyState
@@ -28,12 +29,26 @@ class Reader:
   """
   A non-blocking readline implementation
   """
-  def __init__(self, fd='/dev/stdin', prefix='', savehistory=True):
+  def __init__(self, fd='/dev/stdin', stdout=None, prefix='', savehistory=True):
     self.lines = []
     self.lines_index = 0
     self.buffer = []
     self.index = 0
-    self.fd = coms.Input(fd)
+    #if isinstance(fd, coms.Input):
+      #self.fd = fd
+    #elif isinstance(fd, window.Window):
+      #self.fd = fd.kd
+      #stdout = fd
+    #el
+    if isinstance(fd, coms.Input): #hasattr(fd, 'read') and callable(getattr(fd, 'read')):
+      self.fd = fd
+    else:
+      self.fd = coms.Input(fd)
+    if stdout == None:
+      if isinstance(fd, window.Window):
+        stdout = fd
+      stdout = sys.stderr
+    self.stdout = stdout
     #self.i = keys.stream(self.fd)
     self.prefix = prefix
     self.savehistory = savehistory
@@ -43,12 +58,12 @@ class Reader:
     val = ''.join(self.buffer).encode('utf-8')
     height, width = coms.termsize()
     #if len(val)
-    sys.stderr.write(str(escape.ClearLine))
-    sys.stderr.write('\r'+self.prefix+val)
+    self.stdout.write(str(escape.ClearLine))
+    self.stdout.write('\r'+self.prefix+val)
     if self.index == len(self.buffer):
       pass
     else:
-      sys.stderr.write(escape.CursorLeft(len(self.buffer)-self.index))
+      self.stdout.write(escape.CursorLeft(len(self.buffer)-self.index))
   def __del__(self):
     self.fd.close()
     #if escape: escape.cleanup(self.i.fileno())
@@ -98,7 +113,7 @@ class Reader:
           self.index += 1
         self.redraw()
       elif c == 'Home':
-        sys.stderr.write(escape.CursorLeft(self.index))
+        self.stdout.write(escape.CursorLeft(self.index))
         self.index = 0
       elif c == 'End':
         self.index = len(self.buffer)
@@ -144,9 +159,14 @@ class Reader:
       elif c == KeyState("W", ctrl=True): #^W == delete word
         word_breaks = ' ._[]'
         if self.buffer:
-          while self.index:
+          self.index = min(self.index, len(self.buffer))
+          while self.index: # and self.index <= len(self.buffer):
             self.index -= 1
-            self.buffer.pop(self.index)
+            try:
+              self.buffer.pop(self.index)
+            except:
+              print "Total failure:"
+              print self.buffer, self.index
             if self.index == 0:
               break
             if self.buffer[self.index-1] in word_breaks:
@@ -167,8 +187,8 @@ class Reader:
           self.buffer.insert(self.index, c)
           self.index += len(c)
         if self.index == len(self.buffer):
-          sys.stderr.write(c.encode('utf-8'))
-          sys.stderr.flush()
+          self.stdout.write(c.encode('utf-8'))
+          self.stdout.flush()
         else:
           self.redraw()
 

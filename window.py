@@ -27,86 +27,167 @@ import escape
 
 
 def exists(what):
-  #Use 'which' to check that a program exists
+  """Use 'which' to check that a program exists"""
   return not subprocess.Popen(['which', what], stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
 
+#Special escape sequences that are shared with the client terminal
+GetSize = str(escape.AsciiCode("XS?"))
+IsSize = str(escape.AsciiCode("XS=")) #"xS=40,80;"
+SetBlock = str(escape.AsciiCode("XB")) #e.g, "xBi1". Form: xB[i or o][1 or 0]
+InputFunc = str(escape.AsciiCode("XR")) #"xRr": sys.read;  "xRi": input(); "xRR": lineread
+CloseWindow = str(escape.AsciiCode("XQ"))
+NullEscape = '\00' #str(escape.AsciiCode("Xx"))
 
-GetSize = str(escape.AsciiCode("xS?"))
-IsSize = str(escape.AsciiCode("xS=")) #"xS=40,80;"
-SetBlock = str(escape.AsciiCode("xB")) #e.g, "xBi1". Form: xB[i or o][1 or 0]
-InputFunc = str(escape.AsciiCode("xR")) #"xRr": sys.read;  "xRi": input(); "xRR": lineread
-CloseWindow = str(escape.AsciiCode("xQ"))
-NullEscape = str(escape.AsciiCode("xx"))
-
-commands = [GetSize, IsSize, SetBlock, InputFunc, CloseWindow]
 
 
 class Window:
+  def __init__(self, title="Terminal Window", verbose=True, recreate=True, key_out=coms.Input, tmp_file_prefix="terminal"):
+    """
+    Creates a new terminal window, accessible with a file-like object.
+    The terminal is created using FIFO's and window_client.py
+      TODO: Write cases for other environments
+
+    ``title'' is passed to the created terminal in its' arguments.
+    ``verbose'' controls whether or not an informative message is written as the window is created.
+      (It clears the line the cursor is on, so you may wish to disable it)
+    If the terminal should ``recreate'', then, if it is closed, it will re-open itself whenver flushed or written to.
+      (But not when read...)
+    ``key_out'' is a function that takes a file name pointing to the keys from the terminal. It must return a file-like object.
+    ``tmp_file_prefix'' is pre-pended to the FIFO files.
+    """
+    self.title = title
+    self.verbose = verbose
+    self.recreate = recreate
+    self.key_out = key_out #coms.Input keys.stream
+
+    self.fifoname = tempfile.mktemp(prefix=tmp_file_prefix+"-out-")
+    self.keysname = tempfile.mktemp(prefix=tmp_file_prefix+"terminal-in-")
+    os.mkfifo(self.fifoname)
+    os.mkfifo(self.keysname)
+
+    self.fd = None
+    self.kd = None
+
+
+    self.config_string = "{0}{1}{2}\r".format(escape.ClearScreen, escape.CursorHome, GetSize)
+    self.size = None
+
+    self.create_terminal()
+  
+  def config(self, val):
+    """
+    ``val'' is written to the terminal. If the terminal is closed and re-created, the configuration string will be re-written while it is be re-created.
+    If you need to use things like set_blocking, you can do:
+      window.config(window.set_blocking('i', True))
+    """
+    self.config_string += val
+    self.write(val)
+  
   def is_open(self):
+    """Returns if the terminal is open, or no."""
     try:
-      self.write(NullEscape)
+      os.write(self.fd.fileno(), NulLEscape)
       return True
-    except OSError:
-      return False
+    except OSError as err:
+      if err.args[0] == 32: #Borked pipe
+        return False
+      raise
+  
   def make_open(self):
+    """Opens the window if needed"""
     if not self.is_open():
       self.create_terminal()
-  def ask_size(self):
-    self.write(GetSize)
   
   def close(self):
+    """Closes the windows and FIFOs"""
     #self.write("closing\n")
     self.write("\x1b[xQ")
+    #self.flush()
     time.sleep(.01)
     self.close_files()
   
+  def ask_size(self):
+    """
+    Sends the escape sequence to the terminal to ask for the window size.
+    However, the size won't be updated until this class has read() the terminal's response.
+    Can be used with config()
+    """
+    self.write(GetSize)
+    return GetSize
+  
   def input_mode(self, mode):
-    #r = sys.read, i = raw_input, R = Reader
-    assert mode in "riR"
-    self.write(InputFunc+mode)
+    """input_mode([r, i, R])
+    Tells the terminal how to get input.
+      r: sys.read
+      i: raw_input
+      R: input.Reader
+    If using 'i' (raw_input), echo is enabled. In all other cases, it is disabled.
+    Can be used with config()
+    """
+    val = InputFunc+mode
+    self.write(val)
+    return val
   
   def set_blocking(self, iochoice, yesno):
-    assert iochoice in 'io'
+    """
+    set_blocking("o"utput or "i"nput, will_block)
+    Can be used with config()
+    """
+    assert iochoice[0] in 'io'
     c = str(int(yesno))
-    self.write(str(SetBlock)+iochoice+c)
+    val = str(SetBlock)+iochoice[0]+c
+    self.write(val)
+    return val
   
   def __del__(self):
+    """
+    Permamently closes the terminal, and destroys FIFO resources.
+    """
     self.recreate = False #Window may otherwise flare up
-    try:
-      self.close()
+    try: self.close()
     except: pass
-    os.unlink(self.fifoname)
-    os.unlink(self.keysname)
-    
+    try: os.unlink(self.fifoname)
+    except: pass
+    try: os.unlink(self.keysname)
+    except: pass
+
   def read(self, *args, **kwargs):
+    """
+    read([size]). Reads size bytes. It is typically non-blocking.
+    If there is no data to be had, it returns an empty string.
+    """
     try:
       d = self.kd.read(*args)
-    except IOError:
+    except IOError as err:
+      if err.args[0] == 11: #Resource temporarily unavailable
+        return ''
       if kwargs.get("first"):
         self.make_open()
         d = self.read(*args, first=False)
       else:
         raise
-      #return self.kd.read(*args)
     while IsSize in d:
       afore = d[:d.index(IsSize)]
       after = d[d.index(IsSize)+len(IsSize):]
-      #after = after[+1:]
-      #print `after`
       dim = after[:after.index(';')]
       after = after[after.index(';')+1:]
       d = afore+after
       newsize = [int(_) for _ in dim.split(',')]
-      #print "Old size:", self.size, "New size:", newsize
       self.size = newsize
+    
     return d
+  
   def write(self, *args, **kwargs):
+    """
+    Writes args to the file. It converts to unicode. The args don't have to be strings.
+    (kwargs is internally used)
+    """
     try:
       for a in args:
         if not (type(a) in (str, unicode)):
           a = str(a)
-        os.write(self.fd, a.encode('utf'))
-      #self.flush()
+        self.fd.write(a.encode('utf'))
+      self.flush()
     except OSError as err:
       if kwargs.get('second') or not self.recreate:
         raise
@@ -115,24 +196,33 @@ class Window:
         self.write(*args, second=True)
       else:
         raise
-
+  
   def open_files(self):
-    self.fd = os.open(self.fifoname, os.O_WRONLY)
+    """Opens up our coms FIFO's"""
+    self.fd = open(self.fifoname, 'w')
     self.kd = self.key_out(self.keysname) #open(self.keysname)
+  
   def close_files(self):
-    os.close(self.fd)
+    """Close our end of the coms FIFO's"""
+    self.fd.close()
     self.kd.close()
+  
   def flush(self):
-    self.close_files()
-    self.open_files()
-    #pass
-    #os.fsync(self.fd)
-    #except: pass
-    #os.fsync(self.kd.fileno())
-    #except: pass
-
+    """
+    Flushes output to terminal. (It might not really be necessary)
+    As a side effect, it will re-create the terminal if requested.
+    """
+    try:
+      self.fd.flush()
+    except IOError as e:
+      if e.args[0] == 32: #borken pipe
+        if self.recreate:
+          self.create_terminal()
+  
   def create_terminal(self):
-    """Runs the program to display our output"""
+    """Creates a new terminal. Takes into consideration environment variables to pick the best terminal, and also has to determine the command-line argument.
+      TODO XXX Use popen
+    """
     DO_AND = True
     SILENCE_STDOUT = True
     if "TERM" in os.environ:
@@ -185,71 +275,52 @@ class Window:
     r = os.system(cmd)
     self.open_files()
     coms.noblock(self.kd.fileno())
-    self.ask_size()
+    self.write(self.config_string)
+    self.flush()
     time.sleep(.01)
+    #Read to get the terminal size
     try: self.read()
     except:
       #Try again?
       time.sleep(.05)
-      try: self.read()
-      except: pass
-    #self.write(escape.ClearLine, '\r')
-    
+      try:
+        self.read()
+      finally:
+        if not self.size:
+          sys.stderr.write("Unable to get window size!\n")
+
     if self.verbose:
       sys.stderr.write(str(escape.ClearLine)+'\r')
       sys.stderr.flush()
     
-    
-
-
-  def __init__(self, title="Terminal Window", verbose=True, recreate=True, key_out=coms.Input):
-    """
-    Creates another terminal that can be used. If the program is being called from within
-    screen, it will use the command "screen" to create another screen in screen. Otherwise,
-    it will try to guess the best graphical terminal to use. It returns a write-only file.
-
-    It probably wouldn't be too difficult to be able to read input from the terminal too.
-    TODO: Write cases for other graphical environments?
-    TODO: Are there programs similiar to screen?
-    TODO: Being able to read input would be nice
-    """
-    self.fifoname = tempfile.mktemp(prefix="terminal-out-")
-    self.keysname = tempfile.mktemp(prefix="terminal-in-")
-    os.mkfifo(self.fifoname)
-    os.mkfifo(self.keysname)
-    self.title = title
-    self.verbose = verbose
-    self.recreate = recreate
-    self.fd = None
-    self.kd = None
-    self.key_out = key_out #coms.Input keys.stream
-    self.create_terminal()
-    self.write(escape.ClearScreen)
-    self.size = None
-    self.ask_size()
-    self.write("\r")
-    self.write(escape.CursorHome)
 
 
 
 
-in_screen = "TERM" in os.environ and os.environ["TERM"] == 'screen'
-in_x = "DISPLAY" in os.environ and os.environ["DISPLAY"]
-if not(in_screen or in_x):
-  if exists("screen"):
-    recommand = sys.argv[0]
-    for c in sys.argv[1:]:
-      recommand += ' ' + c
-    os.system("screen python {0}".format(recommand))
-  else:
-    raise SystemExit("Can not continue. You must either run this program with $DISPLAY set, or you must have screen installed.")
+def run_with_windowing():
+  """
+  If it seems that there is no windowing capability, then try to re-run this program with windowing.
+  """
+  in_screen = "TERM" in os.environ and 'screen' in os.environ["TERM"]
+  in_x = "DISPLAY" in os.environ and os.environ["DISPLAY"]
+  if not(in_screen or in_x):
+    if exists("screen"):
+      subprocess.call(["screen", "python"]+sys.argv)
+      raise SystemExit
+      #recommand = sys.argv[0]
+      #for c in sys.argv[1:]:
+      #  recommand += ' ' + c
+      #os.system("screen python {0}".format(recommand))
+    else:
+      raise SystemExit("Can not continue. You must either run this program with $DISPLAY set, or you must have screen installed.")
 
 
 
 if __name__ == '__main__':
+  #A test
   t = Window("Terminal Library Test Window")
   winmsg = "Type stuff to be written into the other window."
-  t.write(winmsg+'\n')
+  t.config(winmsg+'\n')
   import select
   inp = coms.Input()
   print winmsg

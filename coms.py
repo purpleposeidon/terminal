@@ -56,11 +56,11 @@ class Input:
     
     self.orig_flags = None
     
-    self.read = self.fd.read
+    
     self.flush = self.fd.flush
     self.fileno = self.fd.fileno
     self.setblocking(blocking)
-  
+    self.read = self.fd.read
   def setblocking(self, blocking=False):
     #Note: You may wish to call this after SIGCONT
     if blocking and self.orig_flags:
