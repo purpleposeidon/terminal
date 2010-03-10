@@ -6,6 +6,7 @@ import sys
 import fcntl
 import atexit
 import codecs
+import select
 import struct
 import termios
 
@@ -175,11 +176,12 @@ ORIG_STDIN_FLAGS = __oldterm, __oldflags
 
 if __name__ == '__main__':
   print "Reverses the case of the text you write"
-  print "(It also uses 100% of a core)"
+  #print "(It also uses 100% of a core)"
   print "Close with ^C"
   f = Input()
   while 1:
     c = None
+    select.select([f], [],[])
     try:
       c = f.read(1)
     except IOError:
