@@ -117,6 +117,8 @@ BLINK = AttrNum(5)
 REVERSE = AttrNum(7)
 BOLD = BRIGHT
 
+styles = {'normal':NORMAL, 'bright': BRIGHT, 'underline': UNDERLINE, 'blink': BLINK, 'reverse': REVERSE, 'bold': BOLD}
+
 #Base colors
 _BLACK = AttrNum(30)
 _RED = AttrNum(31)
@@ -147,12 +149,27 @@ YELLOW = Color(_BROWN, attr=BRIGHT)
 LIGHT_CYAN = Color(_CYAN, attr=BRIGHT)
 PINK = Color(_PURPLE, attr=BRIGHT)
 
-colors = {'black':BLACK, 'red':RED, 'green':GREEN, 'brown':BROWN, 'blue':BLUE, 'purple':PURPLE, 'cyan':CYAN, 'gray':GRAY, 'dark gray':DARK_GRAY, 'white':WHITE, 'orange':ORANGE, 'light green':LIGHT_GREEN, 'light blue':LIGHT_BLUE, 'yellow':YELLOW, 'light cyan':LIGHT_CYAN, 'pink':PINK}
+colors = {'black':BLACK, 'red':RED, 'green':GREEN, 'brown':BROWN, 'blue':BLUE, 'purple':PURPLE, 'cyan':CYAN, 'gray':GRAY, 'dark gray':DARK_GRAY, 'white':WHITE, 'orange':ORANGE, 'light green':LIGHT_GREEN, 'light blue':LIGHT_BLUE, 'yellow':YELLOW, 'light cyan':LIGHT_CYAN, 'pink':PINK, 'default':NORMAL}
 
 
-
-
-import tempfile
-
-
-
+if __name__ == '__main__':
+  import sys
+  if '--help' in sys.argv or '-help' in sys.argv or '-?' in sys.argv:
+    print """
+Attributes demo:
+  --style:  Show only styles
+  --all:    Show each style with each color
+"""
+    raise SystemExit
+  #print "Colors:"
+  for color in colors:
+    if not '--style' in sys.argv:
+      print colors[color], color, NORMAL, CursorLeft(99), CursorRight(20), '(', color, ')'
+  #print 'Styles:'
+    if '--all' in sys.argv or '--style' in sys.argv:
+      if '--style' in sys.argv: color = 'default'
+      for style in styles:
+        print '\t\t\t', colors[color], styles[style], style, NORMAL, CursorLeft(99), CursorRight(50), '(', style, ')'
+      print '\t\t\t', colors[color], ''.join(str(_) for _ in styles.values()), 'every style', NORMAL, CursorLeft(99), CursorRight(50), '( every style )'
+      print '\t\t\t', colors[color], '{0}{1}'.format(BOLD, REVERSE), 'bold reverse', NORMAL, CursorLeft(99), CursorRight(50), '( bold reverse )'
+      if '--style' in sys.argv: break
