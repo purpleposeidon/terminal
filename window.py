@@ -207,6 +207,10 @@ class Window:
     self.fd.close()
     self.kd.close()
   
+  def fileno(self):
+    """Returns the file number of the keyboard input"""
+    return self.kd.fileno()
+  
   def flush(self):
     """
     Flushes output to terminal. (It might not really be necessary)
