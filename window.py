@@ -61,7 +61,7 @@ class Window:
     self.key_out = key_out #coms.Input keys.stream
 
     self.fifoname = tempfile.mktemp(prefix=tmp_file_prefix+"-out-")
-    self.keysname = tempfile.mktemp(prefix=tmp_file_prefix+"terminal-in-")
+    self.keysname = tempfile.mktemp(prefix=tmp_file_prefix+"-in-")
     os.mkfifo(self.fifoname)
     os.mkfifo(self.keysname)
 
@@ -81,12 +81,13 @@ class Window:
       window.config(window.set_blocking('i', True))
     """
     self.config_string += val
+    #print 'configing with', `val`
     self.write(val)
   
   def is_open(self):
     """Returns if the terminal is open, or no."""
     try:
-      os.write(self.fd.fileno(), NulLEscape)
+      os.write(self.fd.fileno(), NullEscape)
       return True
     except OSError as err:
       if err.args[0] == 32: #Borked pipe
@@ -159,14 +160,29 @@ class Window:
     """
     try:
       d = self.kd.read(*args)
+      if d == '':
+        raise IOError(11, "Resource temporarily unavailable (Terminal window closed)")
     except IOError as err:
       if err.args[0] == 11: #Resource temporarily unavailable
-        return ''
-      if kwargs.get("first"):
-        self.make_open()
-        d = self.read(*args, first=False)
-      else:
-        raise
+        #The pipe is closed
+        if kwargs.get("second"):
+          raise
+        else:
+          if self.recreate:
+            self.create_terminal()
+            return '' #Bah!
+            """
+            self.flush()
+            for _ in range(10):
+              try:
+                return self.read(*args, second=True)
+              except:
+                print 'uhgh, waiting a', _
+                time.sleep(.01*_)
+            """
+          else:
+            raise
+    
     while IsSize in d:
       afore = d[:d.index(IsSize)]
       after = d[d.index(IsSize)+len(IsSize):]
@@ -228,6 +244,7 @@ class Window:
     """Creates a new terminal. Takes into consideration environment variables to pick the best terminal, and also has to determine the command-line argument.
       TODO XXX Use popen
     """
+    self.title = self.title.replace('"', '').replace("'", "\\'")
     DO_AND = True
     SILENCE_STDOUT = True
     if "TERM" in os.environ:
@@ -236,17 +253,21 @@ class Window:
       if t == 'screen':
         if not exists("screen"):
           raise SystemExit("$TERM is screen, yet the program 'screen' could not be found")
-        cmd = "screen -t {1} {0}"
+        #cmd = "screen -t {1} {0}"
+        cmd = ["screen", "-t", self.title]
         DO_AND = False
       elif "DISPLAY" in os.environ:
-        cmd = "x-terminal-emulator -T {1} -e {0}"
+        #cmd = "x-terminal-emulator -T {1} -e {0}"
+        cmd = ["x-terminal-emulator", "-T", self.title, '-e']
         if "DESKTOP_SESSION" in os.environ:
           ds = os.environ["DESKTOP_SESSION"].lower()
           if 'kde' in ds and exists("konsole"):
-            cmd = "konsole --title {1} -e {0}"
+            #cmd = "konsole --title {1} -e {0}"
+            cmd = ["konsole", "--title", self.title, "-e"]
             SILENCE_STDOUT = False #Funky bug.
           elif 'gnome' in ds and exists("gnome-terminal"):
-            cmd = "gnome-terminal -t {1} --execute {0}"
+            #cmd = "gnome-terminal -t {1} --execute {0}"
+            cmd = ['gnome-terminal', '-t', self.title, '--execute']
       else:
         if not exists("screen"):
           raise SystemExit("Can not continue. You will either need to run this program from a graphical environment, or install the program 'screen'.")
@@ -264,20 +285,28 @@ class Window:
       cmd_name = os.path.join(d, 'window_client.py')
     except:
       cmd_name = '`pwd`/window.py'
-    tail = "{0} {1} {2}".format(cmd_name, self.fifoname, self.keysname)
-    if SILENCE_STDOUT:
-      tail += " > /dev/zero"
-    tail += " 2> /dev/zero"
-    if DO_AND:
-      tail += " &"
-    self.title = self.title.replace('"', '').replace("'", "\\'")
-    cmd = cmd.format(tail, '"'+self.title+'"')
+    #tail = "{0} {1} {2}".format(cmd_name, self.fifoname, self.keysname)
+    tail = [cmd_name, self.fifoname, self.keysname]
+    #if SILENCE_STDOUT:
+      #tail += " > /dev/zero"
+    #tail += " 2> /dev/zero"
+    #if DO_AND:
+      #tail += " &"
+    
+    #cmd = cmd.format(tail, '"'+self.title+'"')
+    cmd = cmd + tail
     if self.verbose:
       #print cmd
       sys.stderr.write("\rOpening new window, if this program hangs, press Ctrl-C")
       sys.stderr.flush()
       
-    r = os.system(cmd)
+    
+    if SILENCE_STDOUT:
+      r = subprocess.Popen(cmd, stdout=open('/dev/null', 'w'), stderr=open('/dev/null', 'w'))
+    else:
+      r = subprocess.Popen(cmd, stderr=open('/dev/null', 'w'))
+    if not DO_AND:
+      r.wait()
     self.open_files()
     coms.noblock(self.kd.fileno())
     self.write(self.config_string)
@@ -323,7 +352,7 @@ def run_with_windowing():
 
 if __name__ == '__main__':
   #A test
-  t = Window("Terminal Library Test Window")
+  t = Window("Terminal Library Test Window", recreate=False)
   winmsg = "Type stuff to be written into the other window."
   t.config(winmsg+'\n')
   import select

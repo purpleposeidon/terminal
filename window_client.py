@@ -59,10 +59,11 @@ def main(display_file, keys_file):
         while 1:
           try: output += df.read(1)
           except IOError: break
-      #print `output`
+      #print `output`, window.CloseWindow
       output = unicode(output)
       wrote_output = True
       while output:
+        #print `window.CloseWindow`, ' --> ', `output`
         if output.startswith(window.GetSize):
           h, w = coms.termsize()
           say_size(h, w, kf)
@@ -90,6 +91,8 @@ def main(display_file, keys_file):
             #print "Reading with readline()"
           output = output[1:]
         elif output.startswith(window.CloseWindow):
+          print 'yes I got it okay'
+          output = ''
           return
         elif output.startswith(window.NullEscape):
           output = output.replace(window.NullEscape, '', 1)
@@ -145,5 +148,5 @@ if __name__ == '__main__':
       raise
   else:
     print "This program is used by window.py\nUsage: {0} terminaloutputfile keyinputfile".format(sys.argv[0])
-    raw_input()
+    #raw_input()
   
