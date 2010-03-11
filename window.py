@@ -101,7 +101,8 @@ class Window:
   def close(self):
     """Closes the windows and FIFOs"""
     #self.write("closing\n")
-    self.write("\x1b[xQ")
+    ###self.write("\x1b[xQ")
+    self.write(CloseWindow)
     #self.flush()
     time.sleep(.01)
     self.close_files()
