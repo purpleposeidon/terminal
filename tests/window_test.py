@@ -14,19 +14,13 @@
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-An implementation of lineread for child windows
+Use this to test that windowing will work in general
 """
-import sys
-sys.path.append("./")
-import select
-
+__import__("sys").path.append('./')
 import window
-import keys
 
-w = window.Window("Remote key obtainer")
-select.select([w], [],[])
-for key in keys.stream(w):
-  if key:
-    print key
-  select.select([w], [],[])
-
+window.run_with_windowing()
+w = window.Window()
+w.write("Ohai!")
+print "This is the real app!"
+__import__("time").sleep(2)

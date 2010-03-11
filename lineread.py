@@ -205,7 +205,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt: break
     if c:
       print
-      print c
+      print "Got:", `c`
       if c.strip() == 'exit':
         break
       print

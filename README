@@ -1,24 +1,26 @@
 When to use:
   You just want color/attributes, without dealing with the accursed curses
-  You don't want to deal with the above mentioned accursed
+  You find the use of the above mentioned accursed to be a pain in the tushie
   You want to use multiple terminals
   You need to do terminal-manipulations on files other than stdout
-  You want unicode (py3k supports unicode)
+  You want unicode (py3k's curses supports unicode)
+  You don't want to mess with funky keys
 
 When not to use:
   When you've got to support non-typical terminals (konsole is what I devel on)
   When you want to have multiple documents in a single window, and you want scrolling. (Perhaps scrolling in general? I guess at this)
+  When you think that curses does more efficient drawing than terminal, and that matters to you
 
 The Modules:
+  drawing.py
+    To only write out changes.
   escape.py
-    Various escape sequences. Use to set text attributes.
+    Various low-level escape sequences. Set text attributes, move cursor, erase
   lineread.py
-    To get a line of input, like a non-blocking readline. Has a shoddy history buffer that can be disabled.
+    Provides a non-blocking GNU readline-like. Has a shoddy history buffer that can be disabled.
   window.py
     Code for creating new terminal window.
-  drawing.py
-    To only write out changes. (for roguelikes)
   coms.py
-    Terminal configuration
+    Terminal configuration, and file setup.
   keys.py
-    Intepret key codes
+    Intepret key codes.
