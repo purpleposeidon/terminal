@@ -89,7 +89,10 @@ class AsciiCode:
     AsciiCode(arg [, default=''])
   or
     AsciiCode(sequence='' [, default=''])
-  By default, "arg" is prepended with "<Esc>[". If you pass sequence instead, it is prepended only with "<Esc>".
+  of
+    AsciiCode(value=... [, default=''])
+  By default, "arg" is prepended with "<Esc>[". If you pass sequence instead, it is prepended only with "<Esc>". If you give instead a value, it will not prepend with "<Esc>"
+  
   If there is a '@' character, it is replaced with the value 'default' if the AsciiCode is passed to directly to print. However, if you call the asciicode object, it will expect an argument, and the '@' will be replaced with the given argument.
   """
   def __init__(self, arg=None, sequence="", default='', value=None):
