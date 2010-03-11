@@ -13,7 +13,72 @@
 #You should have received a copy of the GNU General Public License
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+"""
+This module contains escape sequences. For them to take effect, write them to the terminal. Some escape sequences can take arguments. Call the escape sequence with the arguments.
 
+COLORS
+======
+All the possible colors available on a typical linux terminal are defined. There are two types: Base colors, and modified colors. Only base colors may be set to the background.
+Base Colors:
+  BLACK
+  RED
+  GREEN
+  BROWN
+  BLUE
+  PURPLE
+  CYAN
+  GRAY
+
+Modified Colors:
+  DARK_GRAY
+  WHITE
+  ORANGE
+  LIGHT_GREEN
+  LIGHT_BLUE
+  YELLOW
+  LIGHT_CYAN
+  PINK
+
+You can mix colors for foreground and background by doing:
+  Color(fg_color, bg_color)
+
+Example:
+  print Color(LIGHT_BLUE, BLUE)
+This will set the terminal to write text using a light-blue, and the background would be dark-blue. Since LIGHT_BLUE is a modified color, Color(LIGHT_BLUE, LIGHT_BLUE) would have the same effect.
+
+
+ATTRIBUTES
+==========
+NORMAL: Default color and style
+BRIGHT: Makes the text brighter, bolder, and may change the color a bit
+UNDERLINE: Underlines text
+BLINK: Makes the text blink slowly and annoyingly
+REVERSE: Flips the fg and the bg
+BOLD: an alias for BRIGHT
+
+MOVEMENT
+========
+CursorHome: Move cursor to the top-left corner
+CursorUp(how_far=1): Moves the cursor up how_far cells. Attempts to move the cursor off the edge of the screen will just keep it at that extreme edge. The cursor won't enter any scrollback
+CursorDown, CursorRight, CursorLeft: Operate the same.
+CursorSet(line, col): (1, 1) is the first cell. Trying to move the cursor over the edge won't move it past, only to.
+NewLine: Moves the cursor down, and to the very left.
+CursorReturn: Moves the cursor to the left-hand side
+
+ERASURE
+=======
+ClearLine: Clears the line the cursor is on. The cursor remains where it srarted.
+ClearLineRight, ClearLineLeft: Clears the contents of the line to that direction, including what is underneath the cursor.
+ClearScreen: Erases the contents of the screen. The cursor remains where it is
+TerminalReset: Clears the screen, moves the cursor to (1, 1), and clears colors and attributes.
+
+OTHER
+=====
+CursorHide, CursorShow: Hide/Show the cursor
+TerminalTitle(name): Sometimes sets the terminal title. Sometimes fails badly.
+NoScroll, YesScroll: Enable/disable the terminal's scroll buffer, it is often a separate from normal mode. Sometimes it has no effect. It is similiar to what vi does.
+
+"""
 
 ESC = chr(27)
 CSI = ESC+'['
@@ -49,43 +114,48 @@ class AsciiCode:
     return i
 
 
+CursorHome = AsciiCode("H") #Top-left
+CursorEnd = AsciiCode('F') #Doesn't do anything. It's for the 'END' key.
+CursorUp = AsciiCode("@A") #Attempts to move cursor offscreen have no uffect, even with a scrollback buffer
+CursorDown = AsciiCode("@B") #To move the cursor by X chars, do CursorMOTION(X)
+CursorRight = AsciiCode("@C") #If no argument is given to these ascii codes, it moves 1
+CursorLeft = AsciiCode("@D")
+CursorSet = AsciiCode("@;@H") #Line, Col.
+NewLine = AsciiCode(value='\n')
+CursorReturn = AsciiCode(value='\r')
+
+
 ClearLine = AsciiCode("2K")
 ClearLineRight = AsciiCode("K")
 ClearLineLeft = AsciiCode("1K")
 ClearScreen = AsciiCode("2J") #Cursor goes to bottom left. (see CursorHome)
 TerminalReset = AsciiCode(sequence="c")
-TerminalTitle = AsciiCode(sequence="]2;@\a") #Works with xterm
-# konsole/screen will print out part of the argument
-CursorHome = AsciiCode("H") #Top-left
-CursorEnd = AsciiCode('F') #Doesn't do anything. It's for the 'END' key.
-CursorUp = AsciiCode("@A") #Attempts to move cursor offscreen have no uffect, even with a scrollback buffer
-CursorDown = AsciiCode("@B") #To move the cursor by X chars, do CursorMOTION(X)
-CursorRight = AsciiCode("@C")
-CursorLeft = AsciiCode("@D")
-CursorSet = AsciiCode("@;@H") #Line, Col.
+
+TerminalTitle = AsciiCode(sequence="]2;@\a") #Works with xterm. konsole/screen will print out part of the argument
 CursorHide = AsciiCode("?25l")
 CursorShow = AsciiCode("?25h")
 NoScroll = AsciiCode("?1049h") #This puts it into a vi-like mode; no scrollbars on my terminal
 YesScroll = AsciiCode("?1049l") #And this restores. Some terms don't erase the NoScroll content
-NewLine = AsciiCode(value='\n')
-CursorReturn = AsciiCode(value='\r')
 
 class Color:
   def __init__(self, fg=None, bg=None, pattr=None, attr=None):
-    self.fg = fg
     if isinstance(bg, Color):
       #Can't set special foregrounds to background, sadly
       bg = bg.fg
+    #if isinstance(fg, Color):
+      #fg = fg.fg
+    self.fg = fg
     self.bg = bg
     self.attr = attr
     self.pattr = pattr
   def __str__(self):
-    #XXX I'm pretty sure that somehow you can do CSI attribute; attribute; attribute m
+    #XXX I bet you can do "CSI attribute; attribute; attribute m"
     r = ''
     if self.pattr:
       r += CSI+str(self.pattr.val)+'m'
     if self.fg:
-      r += CSI+str(self.fg.val)+'m'
+      r += str(self.fg)
+      #r += CSI+str(self.fg.val)+'m'
     if self.bg:
       r += CSI+str(self.bg.derived+10)+'m'
     if self.attr:
