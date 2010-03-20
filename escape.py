@@ -113,7 +113,6 @@ class AsciiCode:
       i = i.replace('@', str(args.pop(0)), 1)
     if '@' in i or args:
       raise Exception("Argument count mismatch")
-    #print(repr(i))
     return i
 
 
@@ -124,14 +123,19 @@ CursorDown = AsciiCode("@B") #To move the cursor by X chars, do CursorMOTION(X)
 CursorRight = AsciiCode("@C") #If no argument is given to these ascii codes, it moves 1
 CursorLeft = AsciiCode("@D")
 CursorSet = AsciiCode("@;@H") #Line, Col.
+CursorSave = AsciiCode("7")
+CursorRestore = AsciiCode("8")
 NewLine = AsciiCode(value='\n')
 CursorReturn = AsciiCode(value='\r')
+CursorPosition = AsciiCode(sequence="6n")
 
 
 ClearLine = AsciiCode("2K")
 ClearLineRight = AsciiCode("K")
 ClearLineLeft = AsciiCode("1K")
 ClearScreen = AsciiCode("2J") #Cursor goes to bottom left. (see CursorHome)
+ClearScreenUp = AsciiCode("0J")
+ClearScreenDown = AsciiCode("J")
 TerminalReset = AsciiCode(sequence="c")
 
 TerminalTitle = AsciiCode(sequence="]2;@\a") #Works with xterm. konsole/screen will print out part of the argument
@@ -139,6 +143,12 @@ CursorHide = AsciiCode("?25l")
 CursorShow = AsciiCode("?25h")
 NoScroll = AsciiCode("?1049h") #This puts it into a vi-like mode; no scrollbars on my terminal
 YesScroll = AsciiCode("?1049l") #And this restores. Some terms don't erase the NoScroll content
+
+#NumPad1 = AsciiCode("?1h")
+#NumPad2 = AsciiCode(sequence="=")
+ScrollRegion = AsciiCode("@;@r")
+#ScrollUp = AsciiCode("D")
+#ScrollDown = AsciiCode("M")
 
 class Color:
   def __init__(self, fg=None, bg=None, pattr=None, attr=None):
@@ -227,22 +237,24 @@ colors = {'black':BLACK, 'red':RED, 'green':GREEN, 'brown':BROWN, 'blue':BLUE, '
 
 if __name__ == '__main__':
   import sys
+  def write(*args):
+    sys.stdout.write(' '.join(map(str, args))+'\n')
   if '--help' in sys.argv or '-help' in sys.argv or '-?' in sys.argv:
-    print """
+    write("""
 Attributes demo:
   --style:  Show only styles
   --all:    Show each style with each color
-"""
+""")
     raise SystemExit
   #print "Colors:"
   for color in colors:
     if not '--style' in sys.argv:
-      print colors[color], color, NORMAL, CursorLeft(99), CursorRight(20), '(', color, ')'
-  #print 'Styles:'
+      write(colors[color], color, NORMAL, CursorLeft(99), CursorRight(20), '(', color, ')')
+    
     if '--all' in sys.argv or '--style' in sys.argv:
       if '--style' in sys.argv: color = 'default'
       for style in styles:
-        print '\t\t\t', colors[color], styles[style], style, NORMAL, CursorLeft(99), CursorRight(50), '(', style, ')'
-      print '\t\t\t', colors[color], ''.join(str(_) for _ in styles.values()), 'every style', NORMAL, CursorLeft(99), CursorRight(50), '( every style )'
-      print '\t\t\t', colors[color], '{0}{1}'.format(BOLD, REVERSE), 'bold reverse', NORMAL, CursorLeft(99), CursorRight(50), '( bold reverse )'
+        write('\t\t\t', colors[color], styles[style], style, NORMAL, CursorLeft(99), CursorRight(50), '(', style, ')')
+      write('\t\t\t', colors[color], ''.join(str(_) for _ in styles.values()), 'every style', NORMAL, CursorLeft(99), CursorRight(50), '( every style )')
+      write('\t\t\t', colors[color], '{0}{1}'.format(BOLD, REVERSE), 'bold reverse', NORMAL, CursorLeft(99), CursorRight(50), '( bold reverse )')
       if '--style' in sys.argv: break
