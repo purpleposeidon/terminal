@@ -353,7 +353,19 @@ EscKey(KeyState("ESC", alt=True), "\E\E")
 #'''
 
 
-
+def testloop():
+  import select
+  inp = coms.Input()
+  try:
+    select.select([inp], [],[])
+    for _ in stream(inp):
+      if _:
+        sys.stdout.write(str(_)+'\n')
+      select.select([inp], [],[])
+  except (KeyboardInterrupt, EOFError):
+    pass
+  finally:
+    inp.close()
 
 if __name__ == '__main__':
   print """Prints the keys you press. These should work:
@@ -369,15 +381,4 @@ if __name__ == '__main__':
 
 Exit with ctrl-C
   """
-  import select
-  inp = coms.Input()
-  try:
-    select.select([inp], [],[])
-    for _ in stream(inp):
-      if _:
-        sys.stdout.write(str(_)+'\n')
-      select.select([inp], [],[])
-  except (KeyboardInterrupt, EOFError):
-    pass
-  finally:
-    inp.close()
+  testloop()

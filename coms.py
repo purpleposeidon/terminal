@@ -25,7 +25,7 @@ import termios
 
 """
 DISABLE_FLOWCONTROL is enabled by default. With this, the program can catch ^S and ^Q.
-DISABLE_TERM_SIG is *disabled* by default. You'd better be a fabulous programmer if you turn this on; otherwise the user won't be able to force your program to quit with ^C or whatever.
+DISABLE_TERM_SIG is *disabled* by default. You'd better be a fabulous programmer if you turn this on; otherwise the user won't be able to make your program to quit with ^C or whatever.
 
 Default settings:
   Non-blocking
