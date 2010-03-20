@@ -83,7 +83,11 @@ NoScroll, YesScroll: Enable/disable the terminal's scroll buffer, it is often a 
 ESC = chr(27)
 CSI = ESC+'['
 
-class AsciiCode:
+class PseudoString:
+  def __add__(self, other): return str(self)+other
+  def __radd__(self, other): return other+str(self)
+
+class AsciiCode(PseudoString):
   """
   An ascii code is used to control the terminal. It can be created either like:
     AsciiCode(arg [, default=''])
@@ -150,7 +154,7 @@ ScrollRegion = AsciiCode("@;@r")
 #ScrollUp = AsciiCode("D")
 #ScrollDown = AsciiCode("M")
 
-class Color:
+class Color(PseudoString):
   def __init__(self, fg=None, bg=None, pattr=None, attr=None):
     if isinstance(bg, Color):
       #Can't set special foregrounds to background, sadly
@@ -177,7 +181,7 @@ class Color:
   def __repr__(self):
     return repr(str(self))
 
-class AttrNum:
+class AttrNum(PseudoString):
   def __init__(self, val, derived=False):
     self.val = val
     if derived:
