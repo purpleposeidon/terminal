@@ -3,11 +3,20 @@
 
 from distutils.core import setup
 
+version = open('VERSION').read().strip()
+rz = "purpleposeidonSPAM".replace("SPAM", '@g''ma''il.com')
+
 setup(
+  #Meta data
   name="terminal",
+  version=version,
+  author="James Royston",
+  author_email=rz,
   description="A sweet-tongued terminal manipulation library",
-  version='0.1',
-  packages=['terminal'],
   url="http://github.com/purpleposeidon/terminal/",
+  license="GPLv3",
+
+  #Package data
+  packages=['terminal'],
 )
 
