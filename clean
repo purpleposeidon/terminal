@@ -1,3 +1,5 @@
 #!/bin/sh
 
-rm *~ *.pyc *.pyo */*~ */*.pyc */*.pyo 2> /dev/zero
+rm -vrf build 2> /dev/zero
+rm -v *~     *.pyc   *.pyo  2> /dev/zero
+rm -v */*~ */*.pyc */*.pyo 2> /dev/zero
