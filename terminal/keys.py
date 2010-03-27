@@ -368,7 +368,7 @@ def testloop():
     inp.close()
 
 if __name__ == '__main__':
-  print """Prints the keys you press. These should work:
+  print("""Prints the keys you press. These should work:
     a (ascii)
     ú (latin unicode)
     う (crazy-ass unicode. I don't know how to do modifiers with these...)
@@ -380,5 +380,5 @@ if __name__ == '__main__':
     alt-Ú
 
 Exit with ctrl-C
-  """
+  """)
   testloop()

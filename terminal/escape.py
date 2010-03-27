@@ -203,6 +203,7 @@ UNDERLINE = AttrNum(4)
 BLINK = AttrNum(5)
 REVERSE = AttrNum(7)
 BOLD = BRIGHT
+#XXX Why are there holes? Something missing?
 
 styles = {'normal':NORMAL, 'bright': BRIGHT, 'underline': UNDERLINE, 'blink': BLINK, 'reverse': REVERSE, 'bold': BOLD}
 

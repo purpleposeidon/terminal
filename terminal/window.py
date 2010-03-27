@@ -357,7 +357,7 @@ if __name__ == '__main__':
   t.config(winmsg+'\n')
   import select
   inp = coms.Input()
-  print winmsg
+  print(winmsg)
   while 1:
     orig_size = t.size
     avail = select.select([inp.fileno(), t.kd.fileno()], [], [])
@@ -377,5 +377,5 @@ if __name__ == '__main__':
       sys.stdout.write(o.encode('utf'))
       sys.stdout.flush()
     if t.size != orig_size:
-      print "Terminal size:", t.size
+      sys.stderr.write("Terminal size:"+str(t.size)+'\n')
     #break
