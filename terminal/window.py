@@ -277,14 +277,14 @@ class Window:
       raise SystemExit("This program requires the TERM environment variable to be defined.")
     #Another option would be try using "TERM" as the name of the shell to execute, but it would be unlikely to ever get there (And might be a little bit insecure)
     #tail = "cat {0} > /dev/zero 2> /dev/zero".format(self.fifoname)
-    
-    try:
-      d = os.path.split(__file__)[0]
-      if not d:
-        d = os.getcwd()
-      cmd_name = os.path.join(d, 'window_client.py')
-    except:
-      cmd_name = '`pwd`/window.py'
+    cmd.append(sys.executable)
+    #try:
+    d = os.path.split(__file__)[0]
+    if not d:
+      d = os.getcwd()
+    cmd_name = os.path.join(d, 'window_client.py')
+    #except:
+      #cmd_name = '`pwd`/window_client.py'
     #tail = "{0} {1} {2}".format(cmd_name, self.fifoname, self.keysname)
     tail = [cmd_name, self.fifoname, self.keysname]
     #if SILENCE_STDOUT:
@@ -295,6 +295,7 @@ class Window:
     
     #cmd = cmd.format(tail, '"'+self.title+'"')
     cmd = cmd + tail
+    #sys.stderr.write("Running command {0!r}\n".format(cmd))
     if self.verbose:
       #print cmd
       sys.stderr.write("\rOpening new window, if this program hangs, press Ctrl-C")
@@ -350,7 +351,7 @@ def run_with_windowing():
 
 
 
-if __name__ == '__main__':
+def test():
   #A test
   t = Window("Terminal Library Test Window", recreate=False)
   winmsg = "Type stuff to be written into the other window."
@@ -379,3 +380,7 @@ if __name__ == '__main__':
     if t.size != orig_size:
       sys.stderr.write("Terminal size:"+str(t.size)+'\n')
     #break
+
+
+if __name__ == '__main__':
+  test()
