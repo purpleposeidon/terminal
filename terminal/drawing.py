@@ -18,7 +18,7 @@ import weakref
 
 import escape
 import window
-
+import basecolor
 
 class Character:
   def dup(self):
@@ -26,15 +26,12 @@ class Character:
     you'll need to duplicate them. Otherwise, all of them will change!"""
     return Character(self.symbol, self.attr)
   
-  def __init__(self, symbol, attr=escape.GRAY):
+  def __init__(self, symbol, attr=basecolor.GRAY):
     self.symbol = symbol
     self.attr = attr
   
-  def format(self, old_attr=None):
-    if old_attr == self.attr:
-      return self.symbol
-    else:
-      return "%s%s" % (self.attr, self.symbol)
+  def follow(self, old):
+    return self.attr.follow(old)+str(self.symbol)
 
   def __repr__(self):
     return "%s%r%s" % (self.attr, self.symbol, escape.NORMAL)
@@ -48,7 +45,7 @@ class CharacterBuffer:
     self.dx, self.dy = offset
     
     self.buff = {} #form [(x, y)] = Character
-    self.changed = {} #form (x, y) = Character
+    self.changed = {} #form [(x, y)] = Character
     self.needs_full_redraw = True
     self.draw()
 
@@ -64,7 +61,7 @@ class CharacterBuffer:
       self.cfd = fd
       self.needs_full_redraw = True
 
-  def add(self, x, y, char, attr=escape.GRAY):
+  def add(self, x, y, char, attr=basecolor.GRAY):
     """
     Set a drawing.Character or a str at position x, y.
     attr is used to set color, bold, and such. It is only used with str
@@ -80,7 +77,7 @@ class CharacterBuffer:
         x += 1
   
   def redraw(self):
-    #Re-draw everything
+    #Re-draw everything in full
     self.cfd.write(str(escape.CursorHome))
     if self.dy:
       #Top offset
@@ -91,7 +88,7 @@ class CharacterBuffer:
         self.cfd.write(escape.CursorRight(self.dx)) #Left offset
       for x in range(self.width):
         c = self.buff.get((x, y), EMPTY_CHAR)
-        self.cfd.write(c.format(last_attr))
+        self.cfd.write(c.follow(last_attr))
         last_attr = c.attr
       self.cfd.write(str(escape.CursorReturn)+str(escape.NewLine))
     self.needs_full_redraw = False
@@ -128,7 +125,7 @@ class CharacterBuffer:
             self.cfd.write(escape.CursorRight(x-cx))
           else:
             self.cfd.write(escape.CursorSet(y+self.dy+1, x+self.dx+1))
-          self.cfd.write(c.format(last_attr))
+          self.cfd.write(c.follow(last_attr))
           last_attr = c.attr
           cx, cy = x, y
     self.changed = {}
@@ -162,8 +159,10 @@ class WindowBuffer(window.Window, CharacterBuffer):
 
 def test():
   import sys, time
+  import rgbcolor
+  import basecolor
   if len(sys.argv) == 1:
-    cb = CharacterBuffer([20, 3], sys.stdout)
+    cb = CharacterBuffer([25, 4], sys.stdout)
   else:
     cb = WindowBuffer()
   cb.add(0, 0, Character(':'))
@@ -176,7 +175,8 @@ def test():
   cb.draw()
   time.sleep(.5)
   cb.draw()
-  cb.add(1, 1, "This is a test!", escape.RED)
+  cb.add(1, 1, "This is a test!", basecolor.RED)
+  cb.add(1, 2, "This is another test!", rgbcolor.Color(fg=rgbcolor.RgbColor(2, 3, 4)))
   cb.draw()
   time.sleep(.5)
   cb.redraw()

@@ -366,7 +366,8 @@ def test():
     Logo-Page Up (Logo only happens with this class of keys)
 
 Exit with ctrl-C
-  """)  import select
+  """)
+  import select
   inp = coms.Input()
   try:
     select.select([inp], [],[])

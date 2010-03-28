@@ -119,7 +119,6 @@ class AsciiCode(PseudoString):
       raise Exception("Argument count mismatch")
     return i
 
-
 CursorHome = AsciiCode("H") #Top-left
 CursorEnd = AsciiCode('F') #Doesn't do anything. It's for the 'END' key.
 CursorUp = AsciiCode("@A") #Attempts to move cursor offscreen have no uffect, even with a scrollback buffer
@@ -154,36 +153,10 @@ ScrollRegion = AsciiCode("@;@r")
 #ScrollUp = AsciiCode("D")
 #ScrollDown = AsciiCode("M")
 
-class Color(PseudoString):
-  def __init__(self, fg=None, bg=None, pattr=None, attr=None):
-    if isinstance(bg, Color):
-      #Can't set special foregrounds to background, sadly
-      bg = bg.fg
-    #if isinstance(fg, Color):
-      #fg = fg.fg
-    self.fg = fg
-    self.bg = bg
-    self.attr = attr
-    self.pattr = pattr
-  def __str__(self):
-    #XXX I bet you can do "CSI attribute; attribute; attribute m"
-    r = ''
-    if self.pattr:
-      r += CSI+str(self.pattr.val)+'m'
-    if self.fg:
-      r += str(self.fg)
-      #r += CSI+str(self.fg.val)+'m'
-    if self.bg:
-      r += CSI+str(self.bg.derived+10)+'m'
-    if self.attr:
-      r += CSI+str(self.attr.val)+'m'
-    return r
-  def __repr__(self):
-    return repr(str(self))
-
 class AttrNum(PseudoString):
-  def __init__(self, val, derived=False):
+  def __init__(self, val, derived=False, name=None):
     self.val = val
+    self.name = name
     if derived:
       self.derived = derived
     else:
@@ -191,53 +164,23 @@ class AttrNum(PseudoString):
   def __str__(self):
     return CSI+str(self.val)+'m'
   def __repr__(self):
+    if self.name:
+      return self.name
     return repr(str(self))
   def __or__(self, other):
     return AttrNum(self.val | other.val)
     #return AttrNum(self.val | other.val, derived=self.val)
 
 #Styles
-NORMAL = AttrNum(0)
-BRIGHT = AttrNum(1)
-UNDERLINE = AttrNum(4)
-BLINK = AttrNum(5)
-REVERSE = AttrNum(7)
+NORMAL = AttrNum(0, name="NORMAL")
+BRIGHT = AttrNum(1, name="BRIGHT")
+UNDERLINE = AttrNum(4, name="UNDERLINE")
+BLINK = AttrNum(5, name="BLINK")
+REVERSE = AttrNum(7, name="REVERSE")
 BOLD = BRIGHT
 #XXX Why are there holes? Something missing?
 
 styles = {'normal':NORMAL, 'bright': BRIGHT, 'underline': UNDERLINE, 'blink': BLINK, 'reverse': REVERSE, 'bold': BOLD}
-
-#Base colors
-_BLACK = AttrNum(30)
-_RED = AttrNum(31)
-_GREEN = AttrNum(32)
-_BROWN = AttrNum(33) #"yellow"
-_BLUE = AttrNum(34)
-_PURPLE = AttrNum(35) #"magenta"
-_CYAN = AttrNum(36)
-_GRAY = AttrNum(37) #"white"
-
-#Colors with attributes
-BLACK = Color(_BLACK, pattr=NORMAL)
-RED = Color(_RED, pattr=NORMAL)
-GREEN = Color(_GREEN, pattr=NORMAL)
-BROWN = Color(_BROWN, pattr=NORMAL)
-BLUE = Color(_BLUE, pattr=NORMAL)
-PURPLE = Color(_PURPLE, pattr=NORMAL)
-CYAN = Color(_CYAN, pattr=NORMAL)
-GRAY = Color(_GRAY, pattr=NORMAL)
-
-#Advanced colors (These can't be used in the background)
-DARK_GRAY = Color(_BLACK, attr=BRIGHT)
-WHITE = Color(_GRAY, attr=BRIGHT)
-ORANGE = Color(_RED, attr=BRIGHT)
-LIGHT_GREEN = Color(_GREEN, attr=BRIGHT)
-LIGHT_BLUE = Color(_BLUE, attr=BRIGHT)
-YELLOW = Color(_BROWN, attr=BRIGHT)
-LIGHT_CYAN = Color(_CYAN, attr=BRIGHT)
-PINK = Color(_PURPLE, attr=BRIGHT)
-
-colors = {'black':BLACK, 'red':RED, 'green':GREEN, 'brown':BROWN, 'blue':BLUE, 'purple':PURPLE, 'cyan':CYAN, 'gray':GRAY, 'dark gray':DARK_GRAY, 'white':WHITE, 'orange':ORANGE, 'light green':LIGHT_GREEN, 'light blue':LIGHT_BLUE, 'yellow':YELLOW, 'light cyan':LIGHT_CYAN, 'pink':PINK, 'default':NORMAL}
 
 def test():
   import sys
@@ -264,4 +207,5 @@ Attributes demo:
       if '--style' in sys.argv: break
 
 if __name__ == '__main__':
-  test()
+  #test()
+  pass
