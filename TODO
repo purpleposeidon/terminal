@@ -1,3 +1,6 @@
 tmux?
 More test suites!
 More documentation!
+Make everything work simultaneously with both py2 and py3
+Get keypad working
+

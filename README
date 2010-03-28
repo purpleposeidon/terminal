@@ -1,34 +1,39 @@
 A sweet-tongued terminal manipulation library
 
-When to use:
-  You think using curses is a pain in the ...bum
-  You just want color/attributes, without dealing with the accursed curses
-  You find the use of the above mentioned accursed to be a pain in the tushie
-  You want to use multiple terminals
-  You need to do terminal-manipulations on files other than stdout
-  You want unicode (If unicode is all you want, consider also py3k, which supports unicode and curses)
-  You think that curses' key system leaves something to be desired
-  You trust that terminal will let you see tracebacks AND keep your terminal sane
+It's an alternative to programming with curses.
 
 
-When not to use:
-  When you've got to support non-typical terminals (I develop under konsole)
-  When you want to have multiple documents in a single window, and you want scrolling.
-    (Perhaps scrolling in general? This offers nothing for scrolling terminals, but curses does)
-  When you think that curses does more efficient drawing routines than terminal, and that matters to you
-  When you want keypad
+
+Should You Use it?
+  When to use:
+    When you think using curses is a pain in the ...bum
+    When you just want color/attributes, without dealing with the accursed curses
+    When you find using said accurséd to be a pain in the tushie
+    When you want to use multiple terminal windows
+    When you need to do terminal-manipulations on files other than stdout
+    When you want unicode (If unicode is all you want, consider also py3k, which supports unicode with curses)
+    When you think that curses' input system leaves something to be desired
+    When you trust the terminal package to let you see tracebacks AND keep your terminal sane
+  
+  When not to use:
+    When you have got to support non-typical terminals (I think konsole is typical)
+    When you want to have sub-windows in a terminal
+    When you want an easy way to do scrolling
+    When you think that curses does more efficient drawing routines than terminal, and that matters to you
+    When you want keypad
+
 
 The Modules:
-  drawing.py
-    To only write out changes.
   escape.py
-    Various low-level escape sequences. Set text attributes, move cursor, erase
-  lineread.py
-    Provides a non-blocking GNU readline-like. Has a shoddy history buffer that can be disabled.
+    Various low-level escape sequences. Set text attributes, move cursor, erase, and more.
   window.py
-    Code for creating new terminal window.
+    Provides a class that creates a new terminal
+  lineread.py
+    Provides a non-blocking GNU readline-like. It's not very good right now. Has a history buffer.
+  drawing.py
+    To only write out changes
   coms.py
-    Terminal configuration, and file setup.
+    Terminal configuration, and file setup
   keys.py
-    Intepret key codes.
+    Intepret key codes
 
