@@ -239,8 +239,7 @@ PINK = Color(_PURPLE, attr=BRIGHT)
 
 colors = {'black':BLACK, 'red':RED, 'green':GREEN, 'brown':BROWN, 'blue':BLUE, 'purple':PURPLE, 'cyan':CYAN, 'gray':GRAY, 'dark gray':DARK_GRAY, 'white':WHITE, 'orange':ORANGE, 'light green':LIGHT_GREEN, 'light blue':LIGHT_BLUE, 'yellow':YELLOW, 'light cyan':LIGHT_CYAN, 'pink':PINK, 'default':NORMAL}
 
-
-if __name__ == '__main__':
+def test():
   import sys
   def write(*args):
     sys.stdout.write(' '.join(map(str, args))+'\n')
@@ -263,3 +262,6 @@ Attributes demo:
       write('\t\t\t', colors[color], ''.join(str(_) for _ in styles.values()), 'every style', NORMAL, CursorLeft(99), CursorRight(50), '( every style )')
       write('\t\t\t', colors[color], '{0}{1}'.format(BOLD, REVERSE), 'bold reverse', NORMAL, CursorLeft(99), CursorRight(50), '( bold reverse )')
       if '--style' in sys.argv: break
+
+if __name__ == '__main__':
+  test()

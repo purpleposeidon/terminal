@@ -147,7 +147,7 @@ def main(display_file, keys_file):
         kf.flush()
     first = False
 
-if __name__ == '__main__':
+def test():
   if len(sys.argv) == 3:
     name, df, kf = sys.argv
     sys.stdout = codecs.open("/dev/stdin", 'w', 'utf')
@@ -162,4 +162,7 @@ if __name__ == '__main__':
   else:
     print "This program is used by window.py\nUsage: {0} terminaloutputfile keyinputfile".format(sys.argv[0])
     #raw_input()
-  
+
+
+if __name__ == '__main__':
+  test()

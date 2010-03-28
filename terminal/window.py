@@ -38,7 +38,8 @@ InputFunc = str(escape.AsciiCode("XR")) #"xRr": sys.read;  "xRi": input(); "xRR"
 CloseWindow = str(escape.AsciiCode("XQ"))
 NullEscape = '\00' #str(escape.AsciiCode("Xx"))
 
-
+class WindowClosed(IOError):
+  pass
 
 class Window:
   def __init__(self, title="Terminal Window", verbose=True, recreate=True, key_out=coms.Input, tmp_file_prefix="terminal"):
@@ -161,27 +162,27 @@ class Window:
     try:
       d = self.kd.read(*args)
       if d == '':
-        raise IOError(11, "Resource temporarily unavailable (Terminal window closed)")
-    except IOError as err:
-      if err.args[0] == 11: #Resource temporarily unavailable
-        #The pipe is closed
-        if kwargs.get("second"):
-          raise
+        raise WindowClosed
+        #raise IOError(11, "Resource temporarily unavailable (Terminal window closed)")
+    except WindowClosed:
+      #The pipe is closed
+      if kwargs.get("second"):
+        raise
+      else:
+        if self.recreate:
+          self.create_terminal()
+          return '' #Bah!
+          """
+          self.flush()
+          for _ in range(10):
+            try:
+              return self.read(*args, second=True)
+            except:
+              print 'uhgh, waiting a', _
+              time.sleep(.01*_)
+          """
         else:
-          if self.recreate:
-            self.create_terminal()
-            return '' #Bah!
-            """
-            self.flush()
-            for _ in range(10):
-              try:
-                return self.read(*args, second=True)
-              except:
-                print 'uhgh, waiting a', _
-                time.sleep(.01*_)
-            """
-          else:
-            raise
+          raise
     
     while IsSize in d:
       afore = d[:d.index(IsSize)]

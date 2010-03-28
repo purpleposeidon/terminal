@@ -17,22 +17,25 @@
 An implementation of lineread for child windows
 """
 import sys
-sys.path.append("./")
-import random
 import time
+import random
 
-import window
-import escape
+import terminal.escape
+import terminal.window
 
-w = window.Window("Remote line reader", recreate=False)
+w = terminal.window.Window("Remote line reader", recreate=False)
 w.config(w.input_mode("R"))
 while 1:
-  #w.write('\r'+str(escape.CursorUp)+str(escape.ClearLine)+str(random.random())+'\n')
+  #w.write('\r'+str(terminal.escape.CursorUp)+str(terminal.escape.ClearLine)+str(random.random())+'\n')
   #w.write(str(random.random())+'\n')
-  w.write('\r'+str(escape.ClearLine)+str(random.random())+'\n')
+  w.write('\r'+str(terminal.escape.ClearLine)+str(random.random())+'\n')
   try:
     rez = w.read()
     if rez:
       sys.stdout.write(rez)
-  except: pass
+  except terminal.window.WindowClosed:
+    print "Goodbye!"
+    break
+  except IOError:
+    pass
   time.sleep(.5)

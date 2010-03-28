@@ -17,10 +17,10 @@
 Use this to test that windowing will work in general
 """
 __import__("sys").path.append('./')
-import window
+import terminal.window
 
-window.run_with_windowing()
-w = window.Window()
-w.write("Ohai!")
-print "This is the real app!"
+terminal.window.run_with_windowing()
+w = terminal.window.Window()
+w.write("This is the new window.\n")
+print "This is the original terminal."
 __import__("time").sleep(2)

@@ -243,7 +243,8 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
               OUTTA_CONTINE = True
               break
           elif len(possible_matches) == 0:
-            raise Exception("Oh god it is broken")
+            break
+            #raise Exception("Oh god it is broken")
         if OUTTA_CONTINE:
           continue
         yield result
@@ -353,8 +354,19 @@ EscKey(KeyState("ESC", alt=True), "\E\E")
 #'''
 
 
-def testloop():
-  import select
+def test():
+  print("""Prints the keys you press. The following keys ought to be detected:
+    a (ascii)
+    ú (latin unicode)
+    う(Fancy unicode. I only know how to copy-and-paste these, so no idea about modifiers on these.)
+    Escape
+    alt-u
+    alt-ú (For me, left alt+right alt+u w/ international keyboard)
+    Logo-F1
+    Logo-Page Up (Logo only happens with this class of keys)
+
+Exit with ctrl-C
+  """)  import select
   inp = coms.Input()
   try:
     select.select([inp], [],[])
@@ -368,17 +380,4 @@ def testloop():
     inp.close()
 
 if __name__ == '__main__':
-  print("""Prints the keys you press. These should work:
-    a (ascii)
-    ú (latin unicode)
-    う (crazy-ass unicode. I don't know how to do modifiers with these...)
-    Escape
-    alt-u
-    alt-ú (For me, left alt+right alt+u w/ international keyboard)
-    Logo-F1
-    Logo-Page Up (Logo only happens with this class of keys)
-    alt-Ú
-
-Exit with ctrl-C
-  """)
-  testloop()
+  test()

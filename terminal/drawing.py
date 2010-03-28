@@ -160,8 +160,7 @@ class WindowBuffer(window.Window, CharacterBuffer):
     CharacterBuffer.draw(self)
 
 
-
-if __name__ == '__main__':
+def test():
   import sys, time
   if len(sys.argv) == 1:
     cb = CharacterBuffer([20, 3], sys.stdout)
@@ -181,4 +180,7 @@ if __name__ == '__main__':
   cb.draw()
   time.sleep(.5)
   cb.redraw()
-  
+
+if __name__ == '__main__':
+  test()
+

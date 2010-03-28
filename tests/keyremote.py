@@ -16,16 +16,14 @@
 """
 An implementation of lineread for child windows
 """
-import sys
-sys.path.append("./")
 import select
 
-import window
-import keys
+import terminal.window
+import terminal.keys
 
-w = window.Window("Remote key obtainer")
+w = terminal.window.Window("Remote key obtainer")
 select.select([w], [],[])
-for key in keys.stream(w):
+for key in terminal.keys.stream(w):
   if key:
     print key
   select.select([w], [],[])

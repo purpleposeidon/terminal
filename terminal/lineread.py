@@ -98,14 +98,14 @@ class Reader:
       elif c == KeyState('RIGHT'):
         self.index = min(len(self.buffer), self.index+1)
         self.redraw()
-      elif c == KeyState("LEFT", ctrl=True): #Ctrl-left
+      elif c == KeyState("RIGHT", ctrl=True): #Ctrl-left
         self.index -= 1
         while self.index > 0 and self.buffer[self.index] in ' ':
           self.index -= 1
         while self.index > 0 and self.buffer[self.index] not in ' ':
           self.index -= 1
         self.redraw()
-      elif c == KeyState("RIGHT", ctrl=True): #Ctrl-right
+      elif c == KeyState("LEFT", ctrl=True): #Ctrl-right
         l = len(self.buffer)
         while self.index < l and self.buffer[self.index] in ' ':
           self.index += 1
@@ -194,11 +194,11 @@ class Reader:
 
 
 
-
-if __name__ == '__main__':
+def test():
+  #Could be better-implemented
   import time
   r = Reader()
-  print
+  print "This shoddy test doesn't bother with select(); it should.\n"
   while 1:
     try: c = r.readline()
     except EOFError: break
@@ -212,4 +212,7 @@ if __name__ == '__main__':
     else:
       print escape.CursorUp, escape.CursorReturn, time.time()
     r.redraw()
-    time.sleep(.1)
+    time.sleep(.01)
+
+if __name__ == '__main__':
+  test()

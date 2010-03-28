@@ -185,8 +185,7 @@ __oldflags = fcntl.fcntl(__fd, fcntl.F_GETFL)
 __oldterm = termios.tcgetattr(__fd)
 ORIG_STDIN_FLAGS = __oldterm, __oldflags
 
-
-if __name__ == '__main__':
+def main()
   print("Reverses the case of the text you write")
   print("Close with ^C")
   f = Input()
@@ -211,3 +210,7 @@ if __name__ == '__main__':
         c = c.upper()
       sys.stdout.write(c)
       sys.stdout.flush()
+
+if __name__ == '__main__':
+  main()
+
