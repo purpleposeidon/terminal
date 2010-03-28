@@ -3,4 +3,6 @@ More test suites!
 More documentation!
 Make everything work simultaneously with both py2 and py3
 Get keypad working
+See tene's colorcube.c; export TERM=xterm-256color
 
+info: http://bjh21.me.uk/all-escapes/all-escapes.txt
