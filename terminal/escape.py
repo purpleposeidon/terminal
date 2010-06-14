@@ -126,7 +126,7 @@ CursorDown = AsciiCode("@B") #To move the cursor by X chars, do CursorMOTION(X)
 CursorRight = AsciiCode("@C") #If no argument is given to these ascii codes, it moves 1
 CursorLeft = AsciiCode("@D")
 CursorSet = AsciiCode("@;@H") #Line, Col.
-CursorSave = AsciiCode("7")
+CursorSave = AsciiCode("7") #XXX - Doesn't work?
 CursorRestore = AsciiCode("8")
 NewLine = AsciiCode(value='\n')
 CursorReturn = AsciiCode(value='\r')
@@ -136,12 +136,13 @@ CursorPosition = AsciiCode(sequence="6n")
 ClearLine = AsciiCode("2K")
 ClearLineRight = AsciiCode("K")
 ClearLineLeft = AsciiCode("1K")
-ClearScreen = AsciiCode("2J") #Cursor goes to bottom left. (see CursorHome)
+ClearScreen = AsciiCode("2J") #Cursor goes to bottom left. (see CursorHome).
 ClearScreenUp = AsciiCode("0J")
 ClearScreenDown = AsciiCode("J")
 TerminalReset = AsciiCode(sequence="c")
+#TerminalReset and ClearScreen leave scrollback on konsole. Try CursorHome+ClearScreenDown
 
-TerminalTitle = AsciiCode(sequence="]2;@\a") #Works with xterm. konsole/screen will print out part of the argument
+TerminalTitle = AsciiCode(sequence="]2;@\a") #Works with xterm. konsole/screen will print out part of the argument, so you should clear the line after calling.
 CursorHide = AsciiCode("?25l")
 CursorShow = AsciiCode("?25h")
 NoScroll = AsciiCode("?1049h") #This puts it into a vi-like mode; no scrollbars on my terminal

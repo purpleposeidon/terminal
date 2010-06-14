@@ -41,7 +41,7 @@ def say_size(w, h, kf):
   kf.flush()
 
 def main(display_file, keys_file):
-  print "Window not connected . . ."
+  print("Window not connected . . .")
   df = coms.Input(display_file)
   kf = open(keys_file, 'w')
   def resize_handler(*args):
@@ -104,7 +104,7 @@ def main(display_file, keys_file):
             #print "Reading with readline()"
           output = output[1:]
         elif output.startswith(window.CloseWindow):
-          print 'yes I got it okay'
+          print('yes I got it okay')
           output = ''
           return
         elif output.startswith(window.NullEscape):
@@ -154,13 +154,13 @@ def test():
     try:
       main(df, kf)
     except Exception as e:
-      print "Got exception:"
-      print e
-      print "Press enter to continue. . ."
+      print("Got exception:")
+      print(e)
+      print("Press enter to continue. . .")
       raw_input()
       raise
   else:
-    print "This program is used by window.py\nUsage: {0} terminaloutputfile keyinputfile".format(sys.argv[0])
+    print("This program is used by window.py\nUsage: {0} terminaloutputfile keyinputfile".format(sys.argv[0]))
     #raw_input()
 
 

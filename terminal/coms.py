@@ -74,8 +74,10 @@ class Input:
     self.fileno = self.fd.fileno
     self.setblocking(blocking)
     self.read = self.fd.read
+
   def setblocking(self, blocking=False):
     #Note: You may wish to call this after SIGCONT
+    self.blocking = blocking
     if blocking and self.orig_flags:
       cleanup(self.orig_flags, self.fileno())
     else:
@@ -84,6 +86,15 @@ class Input:
   def close(self):
     self.setblocking(True)
     self.fd.close()
+
+  def wait(self):
+    orig_blocking = self.blocking
+    if not self.blocking:
+      self.setblocking(blocking=True)
+    wait(self.fd)
+    if self.blocking != orig_blocking:
+      self.setblocking(blocking=orig_blocking)
+
 
 def termsize(default=(25, 80)):
   """ Returns the (height, width) of the terminal. Stolen from somewhere."""
@@ -179,6 +190,11 @@ def setup(fd):
     RESET_STDIN = True
   return oldterm, oldflags
 
+def wait(fd):
+  #Wait for fd to become readable
+  if type(fd) != int:
+    fd = fd.fileno()
+  select.select([fd], [], [])
 
 __fd = sys.stdin.fileno()
 __oldflags = fcntl.fcntl(__fd, fcntl.F_GETFL)

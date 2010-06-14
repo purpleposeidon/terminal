@@ -111,6 +111,9 @@ class KeyState:
   def __eq__(self, other):
     if isinstance(other, KeyState):
       return str(self) == str(other)
+    if other is None: return False
+    if str(self) == str(other):
+      return True
     return other.lower() == self.value.lower()
   def __str__(self):
     v = self.value

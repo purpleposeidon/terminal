@@ -75,22 +75,16 @@ class Reader:
       else:
         del self.lines[self.lines.index(b)]
         self.lines.append(buff)
-  def readline(self):
+  def readline(self, blocking=None):
     """Returns:
       None if enter wasn't pressed
       A str containing the buffer if it was
     """
     escape_sequence = []
     c = ''
+    if blocking != None:
+      self.fd.setblocking(blocking)
     
-    #while 1:
-      #try:
-        #c = next(self.i)
-        #if c == '':
-          #break
-      #except StopIteration:
-        #break
-    #if 1:
     for c in keys.get_key(self.fd):
       if c == KeyState('LEFT'):
         self.index = max(0, self.index-1)
@@ -165,8 +159,8 @@ class Reader:
             try:
               self.buffer.pop(self.index)
             except:
-              print "Total failure:"
-              print self.buffer, self.index
+              print("Total failure:")
+              print('{0} {1}'.format(self.buffer, self.index))
             if self.index == 0:
               break
             if self.buffer[self.index-1] in word_breaks:
@@ -198,19 +192,18 @@ def test():
   #Could be better-implemented
   import time
   r = Reader()
-  print "This shoddy test doesn't bother with select(); it should.\n"
+  print("This shoddy test doesn't bother with select(); it should.\n")
   while 1:
     try: c = r.readline()
     except EOFError: break
     except KeyboardInterrupt: break
     if c:
-      print
-      print "Got:", `c`
+      print("\nGot:"+repr(c))
       if c.strip() == 'exit':
         break
-      print
+      print()
     else:
-      print escape.CursorUp, escape.CursorReturn, time.time()
+      print("%s%s%s"%(escape.CursorUp, escape.CursorReturn, time.time()))
     r.redraw()
     time.sleep(.01)
 

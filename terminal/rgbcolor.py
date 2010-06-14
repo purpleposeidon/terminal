@@ -96,7 +96,7 @@ rgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgb""")
         arg = map(sum, zip(mask, imask))
         testbg(RgbColor(*arg))
         sys.stdout.write(escape.NORMAL+escape.CursorUp(3)+''.join(str(_) for _ in arg)+escape.CursorDown(3))
-  print
+  print()
   
 if __name__ == '__main__':
   try:
@@ -104,4 +104,4 @@ if __name__ == '__main__':
   except IOError:
     pass
   except KeyboardInterrupt:
-    print escape.NORMAL
+    print(escape.NORMAL)
