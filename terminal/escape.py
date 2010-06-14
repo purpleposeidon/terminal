@@ -119,6 +119,13 @@ class AsciiCode(PseudoString):
       raise Exception("Argument count mismatch")
     return i
 
+class AsciiDupCode(AsciiCode):
+  """All @ are replaced with the same argument.
+  So, an AsciiDupCode can be called with only a single argument.
+  """
+  def __call__(self, arg):
+    return str(self.sequence).replace('@', arg)
+
 CursorHome = AsciiCode("H") #Top-left
 CursorEnd = AsciiCode('F') #Doesn't do anything. It's for the 'END' key.
 CursorUp = AsciiCode("@A") #Attempts to move cursor offscreen have no uffect, even with a scrollback buffer
@@ -142,7 +149,7 @@ ClearScreenDown = AsciiCode("J")
 TerminalReset = AsciiCode(sequence="c")
 #TerminalReset and ClearScreen leave scrollback on konsole. Try CursorHome+ClearScreenDown
 
-TerminalTitle = AsciiCode(sequence="]2;@\a") #Works with xterm. konsole/screen will print out part of the argument, so you should clear the line after calling.
+TerminalTitle = AsciiDupCode(value="\x1b]2;@\a\x1b]1;@\a")
 CursorHide = AsciiCode("?25l")
 CursorShow = AsciiCode("?25h")
 NoScroll = AsciiCode("?1049h") #This puts it into a vi-like mode; no scrollbars on my terminal
