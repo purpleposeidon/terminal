@@ -118,9 +118,13 @@ class CharacterBuffer:
             self.cfd.write(escape.NewLine())
           elif (cx+1 == x) and (cy == y):
             pass #Just to the right, so do nothing
-          elif (cx == x) and (cy != y):
-            #Just move the y cursor
-            self.cfd.write(escape.CursorDown(cy-y))
+          #elif (cx == x) and (cy != y):
+          #  #Just move the y cursor
+          #  delta = cy-y
+          #  if delta > 0:
+          #    self.cfd.write(escape.CursorDown(delta))
+          #  else:
+          #    self.cfd.write(escape.CursorUp(-delta))
           elif (cy == y) and (cx != x):
             self.cfd.write(escape.CursorRight(x-cx))
           else:

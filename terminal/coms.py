@@ -194,6 +194,7 @@ def wait(fd):
   #Wait for fd to become readable
   if type(fd) != int:
     fd = fd.fileno()
+  yesblock(fd)
   select.select([fd], [], [])
 
 __fd = sys.stdin.fileno()

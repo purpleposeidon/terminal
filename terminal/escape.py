@@ -136,6 +136,8 @@ CursorSet = AsciiCode("@;@H") #Line, Col.
 CursorSave = AsciiCode("7") #XXX - Doesn't work?
 CursorRestore = AsciiCode("8")
 NewLine = AsciiCode(value='\n')
+AddLine = AsciiCode('L')
+DelLine = AsciiCode('J')
 CursorReturn = AsciiCode(value='\r')
 CursorPosition = AsciiCode(sequence="6n")
 
@@ -149,7 +151,7 @@ ClearScreenDown = AsciiCode("J")
 TerminalReset = AsciiCode(sequence="c")
 #TerminalReset and ClearScreen leave scrollback on konsole. Try CursorHome+ClearScreenDown
 
-TerminalTitle = AsciiDupCode(value="\x1b]2;@\a\x1b]1;@\a")
+TerminalTitle = AsciiDupCode(value="\x1b]2;@\a\x1b]1;@\a") #Sets the title
 CursorHide = AsciiCode("?25l")
 CursorShow = AsciiCode("?25h")
 NoScroll = AsciiCode("?1049h") #This puts it into a vi-like mode; no scrollbars on my terminal
@@ -158,8 +160,13 @@ YesScroll = AsciiCode("?1049l") #And this restores. Some terms don't erase the N
 #NumPad1 = AsciiCode("?1h")
 #NumPad2 = AsciiCode(sequence="=")
 ScrollRegion = AsciiCode("@;@r")
-#ScrollUp = AsciiCode("D")
-#ScrollDown = AsciiCode("M")
+
+if 1:
+  ScrollUp = AsciiCode("@S") #These work for konsole
+  ScrollDown = AsciiCode("@T")
+else:
+  ScrollUp = AsciiCode("D") #Defined by vt-stuff? But not used.
+  ScrollDown = AsciiCode("M")
 
 class AttrNum(PseudoString):
   def __init__(self, val, derived=False, name=None):
