@@ -87,13 +87,12 @@ class Input:
     self.setblocking(True)
     self.fd.close()
 
-  def wait(self):
-    orig_blocking = self.blocking
+  def wait(self, timeout=None):
     if not self.blocking:
-      self.setblocking(blocking=True)
-    wait(self.fd)
-    if self.blocking != orig_blocking:
-      self.setblocking(blocking=orig_blocking)
+      yesblock(self.fd.fileno())
+    wait(self.fd, timeout=timeout)
+    if not self.blocking:
+      noblock(self.fd.fileno())
 
 
 def termsize(default=(25, 80)):
@@ -190,12 +189,12 @@ def setup(fd):
     RESET_STDIN = True
   return oldterm, oldflags
 
-def wait(fd):
+def wait(fd, timeout=None):
   #Wait for fd to become readable
   if type(fd) != int:
     fd = fd.fileno()
   yesblock(fd)
-  select.select([fd], [], [])
+  select.select([fd], [], [], timeout)
 
 __fd = sys.stdin.fileno()
 __oldflags = fcntl.fcntl(__fd, fcntl.F_GETFL)
