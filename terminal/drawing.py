@@ -75,6 +75,11 @@ class CharacterBuffer:
       for c in char:
         self.add(x, y, Character(c, attr=attr))
         x += 1
+
+  def clear(self):
+    for index in self.buff:
+      self.buff[index] = EMPTY_CHAR
+    self.changed = dict(self.buff)
   
   def redraw(self):
     #Re-draw everything in full
@@ -169,21 +174,25 @@ def test():
     cb = CharacterBuffer([25, 4], sys.stdout)
   else:
     cb = WindowBuffer()
+  def wait():
+    cb.draw()
+    time.sleep(.5)
   cb.add(0, 0, Character(':'))
   cb.add(1, 0, Character('D'))
   cb.add(0, 1, Character("!"))
-  cb.draw()
-  time.sleep(.5)
-  cb.draw()
+  wait()
   cb.add(0, 0, Character('X'))
-  cb.draw()
-  time.sleep(.5)
-  cb.draw()
+  wait()
   cb.add(1, 1, "This is a test!", basecolor.RED)
   cb.add(1, 2, "This is another test!", rgbcolor.Color(fg=rgbcolor.RgbColor(2, 3, 4)))
-  cb.draw()
-  time.sleep(.5)
-  cb.redraw()
+  wait()
+  cb.add(0, 0, "wtf")
+  cb.add(2, len("This is another"), 'n')
+  wait()
+  cb.clear()
+  wait()
+  cb.add(0, 0, "CLEAR!")
+  wait()
 
 if __name__ == '__main__':
   test()
