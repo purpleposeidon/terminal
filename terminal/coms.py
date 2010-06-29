@@ -104,7 +104,8 @@ def termsize(default=(25, 80)):
     w = int(os.environ["COLUMNS"])
     return l, w
   except KeyError:
-    f = fcntl.ioctl(1, termios.TIOCGWINSZ, "\x00"*8)
+    #f = fcntl.ioctl(1, termios.TIOCGWINSZ, "\x00"*8) #Error if using tee, for example
+    f = fcntl.ioctl(0, termios.TIOCGWINSZ, "\x00"*8)
     height, width = struct.unpack("hhhh", f)[0:2]
     if not height:
       return default
