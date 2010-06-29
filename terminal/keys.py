@@ -26,6 +26,7 @@ Notes:
 
 import sys
 import time
+import select
 
 import escape
 import coms
@@ -114,7 +115,7 @@ class KeyState:
     if other is None: return False
     if str(self) == str(other):
       return True
-    return other.lower() == self.value.lower()
+    return str(other).lower() == self.value.lower()
   def __str__(self):
     v = self.value
     if self.shift:
@@ -189,6 +190,8 @@ def stream(fd=sys.stdin, intr_key=KeyState('C', ctrl=True), **kwargs):
       coms.DISABLE_TERM_SIG = False
       coms.apply_ctrl_settings(fileno)
 
+ESCAPE_DELAY = .75
+
 def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
   """
   This function does the work of returning a KeyState.
@@ -203,37 +206,40 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
     return
   if c == escape.ESC:
     while 1:
-      try: n = fd.read(1)
+      #In blocking mode. Uhm. Select. Right.
+      try:
+        if select.select([fd], [], [], ESCAPE_DELAY)[0]:
+          n = fd.read(1)
+        else:
+          raise IOError
       except IOError: n = ''
       if n == '':
         #XXX If you wanted, you might be willing to look again really quickly!
-        #print "Got", `c`
         break
-      #print n
       c += n #We'll have at least two characters
-      result = all_keys.get(c, None)
-      #print 'it is escape stuff', `c`, 'is', result
-      if result:
-        #print c
-        #print "Got", `c`
+      print "The input is", `c`
+      #result = all_keys.get(c, None)
+      possible_matches = [k for k in all_keys if k.startswith(c)]
+
+      if possible_matches:
         #It matches something, however, there may be longer escape sequences
         #(Grumble grumble...)
-        possible_matches = [k for k in all_keys if k.startswith(c)]
-        #print possible_matches
+        #possible_matches = [k for k in all_keys if k.startswith(c)]
         peek = ''
         OUTTA_CONTINE = False
-        while 1:
+        #while 1:
+        if 1:
           try:
-            time.sleep(.1)
+            time.sleep(.025)
             fd.flush()
-            x = fd.read()
+            #if not select.select([fd], [], [], ESCAPE_DELAY)[0]:
+            #  raise IOError
+            x = fd.read(1)
             peek += x
             if not x: raise IOError
           except IOError:
-            #print "nope. Peekage:", `peek`
             break
           possible_matches = [k for k in possible_matches if k.startswith(c+peek)]
-          #print "We've got:", possible_matches
           if len(possible_matches) == 1:
             #This is good, yes?
             r = all_keys[possible_matches[0]]
@@ -246,16 +252,18 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
               OUTTA_CONTINE = True
               break
           elif len(possible_matches) == 0:
-            break
-            #raise Exception("Oh god it is broken")
+            raise Exception("Oh god it is broken")
         if OUTTA_CONTINE:
           continue
-        yield result
+        assert len(possible_matches) == 1
+        yield possible_matches[0]
         return
-      elif len(c) > 7 or n in ESCAPE_ENDS:
-        #There's definitly something wrong!
-        #print "What? Got", `c`
+      else:
         break
+      #elif len(c) > 7 or n in ESCAPE_ENDS:
+      #  #There's definitly something wrong!
+      #  #print "What? Got", `c`
+      #  break
       
     
     if len(c) == 2:
@@ -271,9 +279,10 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
         #print `c`
         yield all_keys.get(char, nonce_key(char))
   else:
-    #A single key!
+    #Not an escape sequence, thank god.
+    #It's a single key, or a ctrl key.
     if c == '\r':
-      #Err, skip that.
+      #Pay no attention.
       return
     #print `c`
     yield all_keys.get(c, nonce_key(c))
@@ -370,7 +379,6 @@ def test():
 
 Exit with ctrl-C
   """)
-  import select
   inp = coms.Input()
   try:
     select.select([inp], [],[])
