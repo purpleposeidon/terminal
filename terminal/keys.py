@@ -74,6 +74,7 @@ class ModKey:
     ['5', {"ctrl":True}],
     ['6', {"shift":True, "ctrl":True}],
     ['7', {"ctrl": True, "alt": True}],
+    ['8', {"shift":True, "ctrl":True, "alt":True}],
   )
   def __init__(self, name, value):
     #Makes its own KeyState, okay?
@@ -190,13 +191,12 @@ def stream(fd=sys.stdin, intr_key=KeyState('C', ctrl=True), **kwargs):
       coms.DISABLE_TERM_SIG = False
       coms.apply_ctrl_settings(fileno)
 
-ESCAPE_DELAY = .75
+ESCAPE_DELAY = .05
 
 def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
   """
-  This function does the work of returning a KeyState.
+  This iterator does the work of yielding a KeyState.
   """
-  #print fd
   try: c = fd.read(1)
   except IOError:
     return
@@ -205,79 +205,58 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
       raise EOFError
     return
   if c == escape.ESC:
-    while 1:
-      #In blocking mode. Uhm. Select. Right.
-      try:
-        if select.select([fd], [], [], ESCAPE_DELAY)[0]:
-          n = fd.read(1)
+    start = time.time()
+    end = start+ESCAPE_DELAY
+    new_char = "XXX"
+    #make sure blocking is on
+    if fd.blocking:
+      coms.noblock(fd)
+    try:
+      #Get shit
+      while 1:
+        #Add a new character
+        #print("add a new character")
+        escape_wait = ESCAPE_DELAY - (time.time() - start)
+        if escape_wait < 0:
+          break
+        new_char = ''
+        #fd.wait(escape_wait)
+        try:
+          new_char = fd.read(1)
+        except IOError:
+          pass
+        c += new_char
+        #See if it's anything
+        if c in all_keys:
+          #It's something specific, easy
+          #print("specific key")
+          yield all_keys[c]
+          return
         else:
-          raise IOError
-      except IOError: n = ''
-      if n == '':
-        #XXX If you wanted, you might be willing to look again really quickly!
-        break
-      c += n #We'll have at least two characters
-      print "The input is", `c`
-      #result = all_keys.get(c, None)
-      possible_matches = [k for k in all_keys if k.startswith(c)]
-
-      if possible_matches:
-        #It matches something, however, there may be longer escape sequences
-        #(Grumble grumble...)
-        #possible_matches = [k for k in all_keys if k.startswith(c)]
-        peek = ''
-        OUTTA_CONTINE = False
-        #while 1:
-        if 1:
-          try:
-            time.sleep(.025)
-            fd.flush()
-            #if not select.select([fd], [], [], ESCAPE_DELAY)[0]:
-            #  raise IOError
-            x = fd.read(1)
-            peek += x
-            if not x: raise IOError
-          except IOError:
-            break
-          possible_matches = [k for k in possible_matches if k.startswith(c+peek)]
-          if len(possible_matches) == 1:
-            #This is good, yes?
-            r = all_keys[possible_matches[0]]
-            if r:
-              yield r
-              return
-            else:
-              #Isn't complete. Get more characters.
-              c += peek
-              OUTTA_CONTINE = True
+          #Either an incomplete key, or something we don't know
+          #print("incomplete key")
+          possible_key = False
+          for key_string in all_keys:
+            if key_string.startswith(c):
+              possible_key = True
               break
-          elif len(possible_matches) == 0:
-            raise Exception("Oh god it is broken")
-        if OUTTA_CONTINE:
-          continue
-        assert len(possible_matches) == 1
-        yield possible_matches[0]
-        return
-      else:
-        break
-      #elif len(c) > 7 or n in ESCAPE_ENDS:
-      #  #There's definitly something wrong!
-      #  #print "What? Got", `c`
-      #  break
-      
-    
+          if not possible_key:
+            break
+      #end while 1
+    finally:
+      #turn off blocking
+      if fd.blocking:
+        coms.yesblock(fd)
+    #It's not a specific character.
+    #Either a meta character (Alt-c), or an unknown sequence
     if len(c) == 2:
-      #It's a meta key
+      #Definitly Meta
       char = c[1]
       k = all_keys.get(char, nonce_key(char))
-      #print `c`
       yield k.meta()
-    #elif show_esc_fail:
-    else:
-      #It's nothing that we know about
-      for char in c:
-        #print `c`
-        yield all_keys.get(char, nonce_key(char))
+      return
+
+    raise Exception("Unknown escape sequence %r" % c)
   else:
     #Not an escape sequence, thank god.
     #It's a single key, or a ctrl key.
@@ -370,12 +349,14 @@ def test():
   print("""Prints the keys you press. The following keys ought to be detected:
     a (ascii)
     ú (latin unicode)
-    う(Fancy unicode. I only know how to copy-and-paste these, so no idea about modifiers on these.)
+    う(Fancy unicode. I only know how to copy-and-paste these; I'm not so sure about modifiers. You can try pressing Esc and quickly pasting it. It should come out as Alt-う.)
     Escape
     alt-u
     alt-ú (For me, left alt+right alt+u w/ international keyboard)
     Logo-F1
     Logo-Page Up (Logo only happens with this class of keys)
+    Ctrl-Alt-Right
+
 
 Exit with ctrl-C
   """)
@@ -393,3 +374,4 @@ Exit with ctrl-C
 
 if __name__ == '__main__':
   test()
+
