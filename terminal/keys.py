@@ -21,7 +21,7 @@ Bugs
 Notes:
   If ctrl is used, case (shift vs. no shift) is lost. Assumes upper.
   Alt just proceeds whatever follows with an escape.
-  Logo (Meta?) only works for ModKeys (F1, Home...)
+  Logo only works for ModKeys (functional keys, like F1 and Home) and excludes Ctrl and Alt.
 """
 
 import sys
@@ -44,7 +44,7 @@ def add_key(value, keystate):
 
 
 class SpecialKey:
-  #A named key
+  """A named key."""
   def __init__(self, name, value):
     if isinstance(name, str):
       #If a string, then there are no modifiers given
@@ -58,23 +58,22 @@ class SpecialKey:
   __repr__ = __str__
 
 class EscKey(SpecialKey):
-  #Keys that start with an escape sequence
+  """Keys that start with an escape sequence."""
   def __init__(self, name, value):
     value = value.replace('\E', escape.ESC).replace('\e', escape.ESC)
     SpecialKey.__init__(self, name, value)
 
 
 class ModKey:
-  #Err, I guess? It's the logo...
   mods = (
-    ['1', {"logo": True}],
-    ['2', {"shift":True}],
-    ['3', {"alt": True}],
-    ['4', {"shift":True, "alt":True}],
-    ['5', {"ctrl":True}],
-    ['6', {"shift":True, "ctrl":True}],
-    ['7', {"ctrl": True, "alt": True}],
-    ['8', {"shift":True, "ctrl":True, "alt":True}],
+    ['1', {"logo":True}],
+    ['2', {             "shift":True}],
+    ['3', {                           "alt":True}],
+    ['5', {                                       "ctrl":True}],
+    ['4', {             "shift":True, "alt":True}],
+    ['6', {             "shift":True,             "ctrl":True}],
+    ['7', {                           "alt":True, "ctrl":True}],
+    ['8', {             "shift":True, "alt":True, "ctrl":True}],
   )
   def __init__(self, name, value):
     #Makes its own KeyState, okay?
@@ -90,6 +89,14 @@ class ModKey:
       k = KeyState(name, **key_presses)
       v = value.replace("*", mod_num)
       all_keys[v] = k
+
+class FakeKey:
+  def __init__(self, sequence):
+    self.sequence = sequence
+
+  def __str__(self):
+    return "<Unknown key: {0!r}>".format(self.sequence.replace(escape.ESC, '\E'))
+
 
 class KeyState:
   def __init__(self, value, shift=False, ctrl=False, alt=False, logo=False, single=False, character=None):
@@ -121,7 +128,6 @@ class KeyState:
     v = self.value
     if self.shift:
       v = v.upper()
-      #if (v == self.value) or (len(v) > 1):
       if (len(v) > 1):
         v = 'Shift-'+self.value.encode("utf")
       v = v.title()
@@ -135,7 +141,6 @@ class KeyState:
     if self.ctrl:
       v = 'Ctrl-'+v
     
-    #if len(v) == 1:
     if (self.ctrl == self.alt == self.logo == False) and len(self.value) == 1:
       return v+"-key"
     else:
@@ -143,30 +148,21 @@ class KeyState:
   __repr__ = __str__
 
 
-#CtrlKey is the easiest
-ctrl_offset = 64
-for dalpha in range(32): #Hell with it...
-  SpecialKey(KeyState(chr(ctrl_offset+dalpha), ctrl=True), chr(dalpha))
-
 
 def nonce_key(c):
-  
-  #assert isinstance(c, unicode)
   if (c.upper() == c) and (c.lower() != c):
     return KeyState(c, shift=True, single=True)
   else:
     return KeyState(c, single=True)
 
-ESCAPE_ENDS = "~ ?\n\t\a"+escape.ESC #These would never show up inside an escape
-#I think...
 
 
 def stream(fd=sys.stdin, intr_key=KeyState('C', ctrl=True), **kwargs):
   """
   ``fd'' is the file-like object. It defaults to stdin. If overiding, use coms.Input(filename).
   Iterator yields KeyState objects.
-   ^S and ^Q doesn't do flow control, ^\ doesn't quit.
-  ^C has been implemented, but it can be over-ridden. Set to None to prevent KeyboardInterrupt, or set to a different KeyState to change it.
+  The ordinary keys bow to our control. ^S and ^Q doesn't do flow control, ^\ doesn't quit.
+  ^C has been kept. Give a KeyState on ``intr_key'' to change it, or set to None to disable.
   """
   
   fileno = None
@@ -174,7 +170,6 @@ def stream(fd=sys.stdin, intr_key=KeyState('C', ctrl=True), **kwargs):
     #Set up the terminal. (Could be a remote window, needs special treatment)
     if isinstance(fd, window.Window):
       fd.config(fd.input_mode('r'))
-      #print `fd.config_string`
     else:
       fileno = fd.fileno()
       coms.DISABLE_TERM_SIG = True
@@ -194,11 +189,27 @@ def stream(fd=sys.stdin, intr_key=KeyState('C', ctrl=True), **kwargs):
 #This sets the maximum time to take while reading escape combos.
 #.0002 seems to be the minimum. Determined by SSH'ing across the
 #internet and back with DSL.
+#vi uses 25 ms, IIRC.
 ESCAPE_DELAY = .0002*100
 
-def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
+
+IGNORE = 0
+ERROR = 1
+FAKE = 2
+
+def get_key(fd, empty_is_eof=False, bad_escape=ERROR, **kwargs):
   """
-  This iterator does the work of yielding a KeyState.
+  This iterator does the work of yielding KeyStates.
+
+  ``fd'' should be a coms.Input object. If an escape sequence is being
+  used, fd will be put into non-blocking mode. It will be restored
+  to blocking mode when get_key returns. For character keys, the
+  function returns immediatly. The worst-case is
+  terminal.ESCAPE_DELAY seconds if the user presses Escape-key.
+
+  ``bad_escape'' is used to control what happens when an unknown escape
+  sequence is used. If keys.IGNORE, the sequence is not returned. If keys.ERROR,
+  an Exception is raised. If keys.FAKE, a KeyState with a FakeKey is returned.
   """
   try: c = fd.read(1)
   except IOError:
@@ -208,36 +219,37 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
       raise EOFError
     return
   if c == escape.ESC:
+    #Escape sequences. Unnecessarily difficult.
     start = time.time()
     end = start+ESCAPE_DELAY
     new_char = "XXX"
-    #make sure blocking is on
+    #make sure blocking is off.
     if fd.blocking:
       coms.noblock(fd)
     try:
       #Get shit
       while 1:
         #Add a new character
-        #print("add a new character")
         escape_wait = ESCAPE_DELAY - (time.time() - start)
         if escape_wait < 0:
           break
         new_char = ''
         #fd.wait(escape_wait)
         try:
+          #Adding a single character at a time ensures that
+          #we won't go past a valid key
           new_char = fd.read(1)
         except IOError:
+          #No new input.
           pass
         c += new_char
         #See if it's anything
         if c in all_keys:
           #It's something specific, easy
-          #print("specific key")
           yield all_keys[c]
           return
         else:
           #Either an incomplete key, or something we don't know
-          #print("incomplete key")
           possible_key = False
           for key_string in all_keys:
             if key_string.startswith(c):
@@ -245,7 +257,6 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
               break
           if not possible_key:
             break
-      #end while 1
     finally:
       #turn off blocking
       if fd.blocking:
@@ -258,20 +269,35 @@ def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
       k = all_keys.get(char, nonce_key(char))
       yield k.meta()
       return
-
-    raise Exception("Unknown escape sequence %r" % c)
+    if bad_escape == ERROR:
+      raise Exception("Unknown escape sequence %r" % c)
+    elif bad_escape == IGNORE:
+      pass
+    elif bad_escape == FAKE:
+      yield KeyState(FakeKey(c))
+    else:
+      raise Exception("Bad argument bad_escape")
+    return
   else:
     #Not an escape sequence, thank god.
     #It's a single key, or a ctrl key.
     if c == '\r':
-      #Pay no attention.
+      #Ignore that nonsense.
       return
-    #print `c`
     yield all_keys.get(c, nonce_key(c))
 
 
-#'''
-#Key data
+
+
+
+#'''# Define all the keys
+
+#Ctrl is the easiest
+__ctrl_offset = 64
+for dalpha in range(32): #Hell with it...
+  SpecialKey(KeyState(chr(__ctrl_offset+dalpha), ctrl=True), chr(dalpha))
+
+#Key data. The source for (some!) of these are from Konsole's source.
 EscKey(KeyState("ESC", single=True), "\e")
 SpecialKey(KeyState("TAB", single=True, character='\t'), "\t")
 EscKey(KeyState("TAB", shift=True, character='\t'), "\e[Z")
@@ -341,9 +367,6 @@ ModKey("PAGE DOWN", "\E[6;*~")
 
 EscKey(KeyState("ENTER", alt=True, shift=True), "\E\EOM")
 EscKey(KeyState("ESC", alt=True), "\E\E")
-#SpecialKey(KeyState("/", ctrl=True), "\x1f")
-#SpecialKey(KeyState("\\", ctrl=True), "\x1c") #QUIT, actually
-
 
 #'''
 
@@ -361,7 +384,7 @@ def test():
     Ctrl-Alt-Right
 
 
-Exit with ctrl-C
+Exit with Ctrl-C
   """)
   inp = coms.Input()
   try:
