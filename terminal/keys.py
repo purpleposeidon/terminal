@@ -191,7 +191,10 @@ def stream(fd=sys.stdin, intr_key=KeyState('C', ctrl=True), **kwargs):
       coms.DISABLE_TERM_SIG = False
       coms.apply_ctrl_settings(fileno)
 
-ESCAPE_DELAY = .05
+#This sets the maximum time to take while reading escape combos.
+#.0002 seems to be the minimum. Determined by SSH'ing across the
+#internet and back with DSL.
+ESCAPE_DELAY = .0002*100
 
 def get_key(fd, empty_is_eof=False, show_esc_fail=False, **kwargs):
   """
