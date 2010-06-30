@@ -192,7 +192,7 @@ def test():
   #Could be better-implemented
   import time
   r = Reader()
-  print("This shoddy test doesn't bother with select(); it should.\n")
+  print()
   while 1:
     try: c = r.readline()
     except EOFError: break
@@ -205,7 +205,7 @@ def test():
     else:
       print("%s%s%s"%(escape.CursorUp, escape.CursorReturn, time.time()))
     r.redraw()
-    time.sleep(.01)
+    r.fd.wait(.05)
 
 if __name__ == '__main__':
   test()
