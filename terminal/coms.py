@@ -95,25 +95,37 @@ class Input:
       noblock(self.fd.fileno())
 
 
-def termsize(default=(25, 80)):
-  """ Returns the (height, width) of the terminal. Stolen from somewhere."""
+def termsize(default=(25, 80), fd=None, no_environ=False):
+  """ Returns the (height, width) of the terminal.
+  
+  Stolen from somewhere.
+  
+  If there is a LINES and COLUMNS defined, then that is returned. (This can be overridden with
+  no_environ)
+  If fd is not given, the default file descriptor (STDIN/STDOUT/STDERR, determined at import time)
+  is queried for the window size. If that fails, the default is returned."""
+  if fd is None:
+    global __fd
+    fd = __fd
   try:
+    if no_environ: raise KeyError
     #These are only very rarely defined.
     l, w = default
     l = int(os.environ["LINES"])
     w = int(os.environ["COLUMNS"])
     return l, w
   except KeyError:
-    #f = fcntl.ioctl(1, termios.TIOCGWINSZ, "\x00"*8) #Error if using tee, for example
-    f = fcntl.ioctl(0, termios.TIOCGWINSZ, "\x00"*8)
-    height, width = struct.unpack("hhhh", f)[0:2]
-    if not height:
-      return default
-    return height, width
+    try:
+      f = fcntl.ioctl(fd, termios.TIOCGWINSZ, "\x00"*8)
+      return struct.unpack("hhhh", f)[0:2]
+    except IOError: #bad file descriptor
+      if default:
+        return default
+      raise
 
 @atexit.register
 def repair_terminal():
-  #Restore terminal to shell mode
+  """Restore terminal to shell mode"""
   global RESET_STDIN, ORIG_STDIN_FLAGS, __fd
   if RESET_STDIN:
     cleanup(ORIG_STDIN_FLAGS, __fd)
@@ -124,7 +136,8 @@ def repair_terminal():
 #But these are completely changed from what they were originally anyways
 
 def cleanup(old_term_flags, fd):
-  """Return terminal to sanity, remove plumbing"""
+  """Return terminal to original state. Run like 
+  cleanup(*setup())"""
   oldterm, oldflags = old_term_flags
   try:
     termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
@@ -133,6 +146,7 @@ def cleanup(old_term_flags, fd):
     pass
 
 def yesecho(fd):
+  """Turns on echoing of typed characters."""
   try:
     oldterm = termios.tcgetattr(fd)
     newattr = oldterm[:]
@@ -145,6 +159,7 @@ def yesecho(fd):
   return oldterm
 
 def noecho(fd):
+  """Disables echoing of typed characters."""
   try:
     oldterm = termios.tcgetattr(fd)
     newattr = oldterm[:]
@@ -157,6 +172,9 @@ def noecho(fd):
     pass
 
 def apply_ctrl_settings(fd):
+  """
+  Disables the uffects of some control keys.
+  """
   oldterm = termios.tcgetattr(fd)
   newattr = oldterm[:]
   if DISABLE_FLOWCONTROL:
@@ -170,11 +188,17 @@ def apply_ctrl_settings(fd):
   termios.tcsetattr(fd, termios.TCSANOW, newattr)
 
 def noblock(fd):
+  """
+  Sets blocking mode for a file. If no data is available, then don't wait while reading.
+  """
   oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
   fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
   return oldflags
 
 def yesblock(fd):
+  """
+  Turns on blocking mode.
+  """
   oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
   fcntl.fcntl(fd, fcntl.F_SETFL, oldflags & ~os.O_NONBLOCK)
   return oldflags
@@ -191,15 +215,29 @@ def setup(fd):
   return oldterm, oldflags
 
 def wait(fd, timeout=None):
-  #Wait for fd to become readable
+  """Wait for fd to become readable. Turns on blocking."""
   if type(fd) != int:
     fd = fd.fileno()
   yesblock(fd)
   select.select([fd], [], [], timeout)
 
-__fd = sys.stdin.fileno()
+
+def find_tty():
+  """
+  Picks the best file to use for doing fcntl with.
+  """
+  for fd in (sys.stdin, sys.stdout, sys.stderr):
+    if fd.isatty():
+      fd = fd.fileno()
+      return fd
+
+#Try to get a tty
+__fd = find_tty()
 __oldflags = fcntl.fcntl(__fd, fcntl.F_GETFL)
-__oldterm = termios.tcgetattr(__fd)
+try:
+  __oldterm = termios.tcgetattr(__fd)
+except termios.error:
+  __oldterm = None
 ORIG_STDIN_FLAGS = __oldterm, __oldflags
 
 def test():
@@ -216,10 +254,7 @@ def test():
     except KeyboardInterrupt:
       break
     except:
-      break
-    #except Exception as e:
-      #print e.__class__.__name__
-      #break
+      raise
     if c:
       if c.upper() == c:
         c = c.lower()

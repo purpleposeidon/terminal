@@ -133,7 +133,10 @@ class KeyState:
       v = v.title()
     elif self.value == self.value.upper():
       v = v.title()
-    v = v.encode("utf")
+    if sys.version_info[0] >= 3:
+      pass
+    else:
+      v = v.encode("utf")
     if self.logo:
       v = 'Logo-'+v
     if self.alt:
@@ -142,9 +145,8 @@ class KeyState:
       v = 'Ctrl-'+v
     
     if (self.ctrl == self.alt == self.logo == False) and len(self.value) == 1:
-      return v+"-key"
-    else:
-      return v #.title()
+      v += "-key"
+    return v
   __repr__ = __str__
 
 
@@ -211,6 +213,10 @@ def get_key(fd, empty_is_eof=False, bad_escape=ERROR, **kwargs):
   sequence is used. If keys.IGNORE, the sequence is not returned. If keys.ERROR,
   an Exception is raised. If keys.FAKE, a KeyState with a FakeKey is returned.
   """
+  if not select.select([fd], [], [], 0)[0]:
+    #No data at all; must check because py3.1 codec.py can't handle
+    #non-blocking fds
+    return
   try: c = fd.read(1)
   except IOError:
     return
@@ -239,8 +245,9 @@ def get_key(fd, empty_is_eof=False, bad_escape=ERROR, **kwargs):
           #Adding a single character at a time ensures that
           #we won't go past a valid key
           new_char = fd.read(1)
-        except IOError:
+        except (IOError, TypeError):
           #No new input.
+          #TypeError for py3 bug
           pass
         c += new_char
         #See if it's anything
@@ -388,11 +395,11 @@ Exit with Ctrl-C
   """)
   inp = coms.Input()
   try:
-    select.select([inp], [],[])
+    inp.wait()
     for _ in stream(inp):
       if _:
         sys.stdout.write(str(_)+'\n')
-      select.select([inp], [],[])
+      inp.wait()
   except (KeyboardInterrupt, EOFError):
     pass
   finally:

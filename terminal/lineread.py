@@ -59,7 +59,10 @@ class Reader:
     height, width = coms.termsize()
     #if len(val)
     self.stdout.write(str(escape.ClearLine))
-    self.stdout.write('\r'+self.prefix+val)
+    if sys.version_info[0] >= 3:
+      self.stdout.write('\r'+self.prefix+val.decode('utf'))
+    else:
+      self.stdout.write('\r'+self.prefix+val)
     if self.index == len(self.buffer):
       pass
     else:
@@ -181,7 +184,10 @@ class Reader:
           self.buffer.insert(self.index, c)
           self.index += len(c)
         if self.index == len(self.buffer):
-          self.stdout.write(c.encode('utf-8'))
+          if sys.version_info[0] >= 3:
+            self.stdout.write(c)
+          else:
+            self.stdout.write(c.encode('utf-8'))
           self.stdout.flush()
         else:
           self.redraw()
@@ -203,7 +209,7 @@ def test():
         break
       print()
     else:
-      print("%s%s%s"%(escape.CursorUp, escape.CursorReturn, time.time()))
+      print("%s%s%s" % (escape.CursorUp, escape.CursorReturn, time.time()))
     r.redraw()
     r.fd.wait(.05)
 

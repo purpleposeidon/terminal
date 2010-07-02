@@ -2,6 +2,17 @@ tmux?
 More test suites!
 More documentation!
 Make everything work simultaneously with both py2 and py3
+  NO:
+    rgbcolor - should be easy?
+    window
+  SYNTAX AND SIMPLE TEST:
+    coms (some testing)
+    basecolor
+    escape
+    drawing
+    keys
+  THOROUGH TEST:
+    colorcheck
 Get keypad working
 See tene's colorcube.c; export TERM=xterm-256color
 

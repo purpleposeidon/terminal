@@ -73,6 +73,11 @@ class Window:
     self.config_string = "{0}{1}{2}\r".format(escape.ClearScreen, escape.CursorHome, GetSize)
     self.size = None
 
+    #failure detection stats
+    self.max_second_per_close = 5 #Can't be closed a bunch of times in a row
+    self.start = time.time()
+    self.deaths = 0
+
     self.create_terminal()
   
   def config(self, val):
@@ -202,9 +207,13 @@ class Window:
     """
     try:
       for a in args:
-        if not (type(a) in (str, unicode)):
-          a = str(a)
-        self.fd.write(a.encode('utf'))
+        if sys.version_info[0] >= 3:
+          if type(a) != str: a = str(a)
+          self.fd.write(a)
+        else:
+          if not (type(a) in (str, unicode)):
+            a = str(a)
+          self.fd.write(a.encode('utf'))
       self.flush()
     except OSError as err:
       if kwargs.get('second') or not self.recreate:
@@ -245,6 +254,11 @@ class Window:
     """Creates a new terminal. Takes into consideration environment variables to pick the best terminal, and also has to determine the command-line argument.
       TODO XXX Use popen
     """
+    #check openning limit
+    self.deaths += 1
+    if (time.time() - self.start)/self.deaths > self.max_second_per_close:
+      raise KeyboardInterrupt("Broken window loop suspected.")
+    #all clear
     self.title = self.title.replace('"', '').replace("'", "\\'")
     DO_AND = True
     SILENCE_STDOUT = True
