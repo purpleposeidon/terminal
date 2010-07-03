@@ -76,7 +76,7 @@ def testbg(fg):
         mask = list(omask)
         imask = map(lambda x: (not x)*center, mask)
         mask = map(lambda x: x*v, mask)
-        arg = map(sum, zip(mask, imask))
+        arg = list(map(sum, zip(mask, imask)))
         sys.stdout.write(Color(fg=fg, bg=RgbColor(*arg))+''.join(str(_) for _ in arg))
 
 def test():
@@ -93,10 +93,10 @@ rgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgbrgb""")
         mask = list(omask)
         imask = map(lambda x: (not x)*center, mask)
         mask = map(lambda x: x*v, mask)
-        arg = map(sum, zip(mask, imask))
+        arg = list(map(sum, zip(mask, imask)))
         testbg(RgbColor(*arg))
         sys.stdout.write(escape.NORMAL+escape.CursorUp(3)+''.join(str(_) for _ in arg)+escape.CursorDown(3))
-  print()
+  sys.stdout.write('\n')
   
 if __name__ == '__main__':
   try:

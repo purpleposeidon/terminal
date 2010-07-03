@@ -3,14 +3,14 @@ More test suites!
 More documentation!
 Make everything work simultaneously with both py2 and py3
   NO:
-    rgbcolor - should be easy?
-    window
+    window - window_client does weird stuff
   SYNTAX AND SIMPLE TEST:
     coms (some testing)
     basecolor
     escape
     drawing
     keys
+    rgbcolor
   THOROUGH TEST:
     colorcheck
 Get keypad working
