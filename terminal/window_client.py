@@ -21,10 +21,11 @@ import signal
 import readline
 
 
-import escape
-import coms
-import window
-import lineread
+import terminal
+from terminal import escape
+from terminal import coms
+from terminal import window
+from terminal import lineread
 
 """
 Needed commands:

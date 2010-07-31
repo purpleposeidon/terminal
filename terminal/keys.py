@@ -28,9 +28,9 @@ import sys
 import time
 import select
 
-import escape
-import coms
-import window
+import terminal.escape
+import terminal.coms
+import terminal.window
 
 all_keys = {}
 
@@ -60,7 +60,7 @@ class SpecialKey:
 class EscKey(SpecialKey):
   """Keys that start with an escape sequence."""
   def __init__(self, name, value):
-    value = value.replace('\E', escape.ESC).replace('\e', escape.ESC)
+    value = value.replace('\E', terminal.escape.ESC).replace('\e', terminal.escape.ESC)
     SpecialKey.__init__(self, name, value)
 
 
@@ -77,7 +77,7 @@ class ModKey:
   )
   def __init__(self, name, value):
     #Makes its own KeyState, okay?
-    value = value.replace('\E', escape.ESC).replace('\e', escape.ESC)
+    value = value.replace('\E', terminal.escape.ESC).replace('\e', terminal.escape.ESC)
     assert '*' in value
     if ';*' in value:
       #all_keys[value.replace(';*', '')] = KeyState(name)
@@ -95,7 +95,7 @@ class FakeKey:
     self.sequence = sequence
 
   def __str__(self):
-    return "<Unknown key: {0!r}>".format(self.sequence.replace(escape.ESC, '\E'))
+    return "<Unknown key: {0!r}>".format(self.sequence.replace(terminal.escape.ESC, '\E'))
 
 
 class KeyState:
@@ -170,12 +170,12 @@ def stream(fd=sys.stdin, intr_key=KeyState('C', ctrl=True), **kwargs):
   fileno = None
   try:
     #Set up the terminal. (Could be a remote window, needs special treatment)
-    if isinstance(fd, window.Window):
+    if isinstance(fd, terminal.window.Window):
       fd.config(fd.input_mode('r'))
     else:
       fileno = fd.fileno()
-      coms.DISABLE_TERM_SIG = True
-      coms.apply_ctrl_settings(fileno)
+      terminal.coms.DISABLE_TERM_SIG = True
+      terminal.coms.apply_ctrl_settings(fileno)
     
     while 1:
       for key in get_key(fd, **kwargs):
@@ -185,8 +185,8 @@ def stream(fd=sys.stdin, intr_key=KeyState('C', ctrl=True), **kwargs):
       yield None
   finally:
     if fileno:
-      coms.DISABLE_TERM_SIG = False
-      coms.apply_ctrl_settings(fileno)
+      terminal.coms.DISABLE_TERM_SIG = False
+      terminal.coms.apply_ctrl_settings(fileno)
 
 #This sets the maximum time to take while reading escape combos.
 #.0002 seems to be the minimum. Determined by SSH'ing across the
@@ -224,14 +224,14 @@ def get_key(fd, empty_is_eof=False, bad_escape=ERROR, **kwargs):
     if empty_is_eof:
       raise EOFError
     return
-  if c == escape.ESC:
+  if c == terminal.escape.ESC:
     #Escape sequences. Unnecessarily difficult.
     start = time.time()
     end = start+ESCAPE_DELAY
     new_char = "XXX"
     #make sure blocking is off.
     if fd.blocking:
-      coms.noblock(fd)
+      terminal.coms.noblock(fd)
     try:
       #Get shit
       while 1:
@@ -267,7 +267,7 @@ def get_key(fd, empty_is_eof=False, bad_escape=ERROR, **kwargs):
     finally:
       #turn off blocking
       if fd.blocking:
-        coms.yesblock(fd)
+        terminal.coms.yesblock(fd)
     #It's not a specific character.
     #Either a meta character (Alt-c), or an unknown sequence
     if len(c) == 2:
@@ -393,7 +393,7 @@ def test():
 
 Exit with Ctrl-C
   """)
-  inp = coms.Input()
+  inp = terminal.coms.Input()
   try:
     inp.wait()
     for _ in stream(inp):

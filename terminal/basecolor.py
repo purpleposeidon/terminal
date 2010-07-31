@@ -1,10 +1,10 @@
 
 
-import escape
-AttrNum = escape.AttrNum
-BRIGHT = escape.BRIGHT
-NORMAL = escape.NORMAL
-CSI = escape.CSI
+import terminal.escape
+AttrNum = terminal.escape.AttrNum
+BRIGHT = terminal.escape.BRIGHT
+NORMAL = terminal.escape.NORMAL
+CSI = terminal.escape.CSI
 
 #Base colors
 _DEFAULT = AttrNum(0, name="_DEFAULT") #Also known as "NORMAL"
@@ -18,7 +18,7 @@ _CYAN = AttrNum(36, name="_CYAN")
 _GRAY = AttrNum(37, name="_GRAY") #"white"
 
 
-class Color(escape.PseudoString):
+class Color(terminal.escape.PseudoString):
   def __init__(self, *attrs, **kwargs):
     fg = kwargs.get('fg', _DEFAULT)
     bg = kwargs.get('bg', _BLACK)
@@ -84,10 +84,10 @@ colors = {'default':DEFAULT, 'black':BLACK, 'red':RED, 'green':GREEN, 'brown':BR
 
 def test():
   import sys
-  import escape
+  import terminal.escape
   for fg in colors:
     sys.stdout.write(colors[fg]+fg+NORMAL+":")
-    sys.stdout.write(escape.CursorLeft(99)+escape.CursorRight(20)+'|')
+    sys.stdout.write(terminal.escape.CursorLeft(99)+terminal.escape.CursorRight(20)+'|')
     #sys.stdout.write((fg+':').ljust(20)+'|')
     for bg in colors:
       sys.stdout.write(Color(fg=colors[fg], bg=colors[bg]) + 'X')

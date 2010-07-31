@@ -18,12 +18,12 @@
 import os
 import sys
 
-import escape
-import coms
-import window
+import terminal.escape
+import terminal.coms
+import terminal.window
 
-import keys
-from keys import KeyState
+import terminal.keys
+from terminal.keys import KeyState
 
 class Reader:
   """
@@ -34,31 +34,31 @@ class Reader:
     self.lines_index = 0
     self.buffer = []
     self.index = 0
-    #if isinstance(fd, coms.Input):
+    #if isinstance(fd, terminal.coms.Input):
       #self.fd = fd
-    #elif isinstance(fd, window.Window):
+    #elif isinstance(fd, terminal.window.Window):
       #self.fd = fd.kd
       #stdout = fd
     #el
-    if isinstance(fd, coms.Input): #hasattr(fd, 'read') and callable(getattr(fd, 'read')):
+    if isinstance(fd, terminal.coms.Input): #hasattr(fd, 'read') and callable(getattr(fd, 'read')):
       self.fd = fd
     else:
-      self.fd = coms.Input(fd)
+      self.fd = terminal.coms.Input(fd)
     if stdout == None:
-      if isinstance(fd, window.Window):
+      if isinstance(fd, terminal.window.Window):
         stdout = fd
       stdout = sys.stderr
     self.stdout = stdout
-    #self.i = keys.stream(self.fd)
+    #self.i = terminal.keys.stream(self.fd)
     self.prefix = prefix
     self.savehistory = savehistory
     self.redraw()
 
   def redraw(self):
     val = ''.join(self.buffer).encode('utf-8')
-    height, width = coms.termsize()
+    height, width = terminal.coms.termsize()
     #if len(val)
-    self.stdout.write(str(escape.ClearLine))
+    self.stdout.write(str(terminal.escape.ClearLine))
     if sys.version_info[0] >= 3:
       self.stdout.write('\r'+self.prefix+val.decode('utf'))
     else:
@@ -66,10 +66,10 @@ class Reader:
     if self.index == len(self.buffer):
       pass
     else:
-      self.stdout.write(escape.CursorLeft(len(self.buffer)-self.index))
+      self.stdout.write(terminal.escape.CursorLeft(len(self.buffer)-self.index))
   def __del__(self):
     self.fd.close()
-    #if escape: escape.cleanup(self.i.fileno())
+    #if terminal.escape: terminal.escape.cleanup(self.i.fileno())
   def add_history(self, buff):
     b = ''.join(buff)
     if b:
@@ -110,7 +110,7 @@ class Reader:
           self.index += 1
         self.redraw()
       elif c == 'Home':
-        self.stdout.write(escape.CursorLeft(self.index))
+        self.stdout.write(terminal.escape.CursorLeft(self.index))
         self.index = 0
       elif c == 'End':
         self.index = len(self.buffer)
@@ -209,7 +209,7 @@ def test():
         break
       print()
     else:
-      print("%s%s%s" % (escape.CursorUp, escape.CursorReturn, time.time()))
+      print("%s%s%s" % (terminal.escape.CursorUp, terminal.escape.CursorReturn, time.time()))
     r.redraw()
     r.fd.wait(.05)
 

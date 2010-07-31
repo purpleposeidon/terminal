@@ -20,9 +20,9 @@ import time
 import tempfile
 import subprocess
 
-import coms
-import keys
-import escape
+import terminal.coms
+import terminal.keys
+import terminal.escape
 
 
 
@@ -31,18 +31,18 @@ def exists(what):
   return not subprocess.Popen(['which', what], stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
 
 #Special escape sequences that are shared with the client terminal
-GetSize = str(escape.AsciiCode("XS?"))
-IsSize = str(escape.AsciiCode("XS=")) #"xS=40,80;"
-SetBlock = str(escape.AsciiCode("XB")) #e.g, "xBi1". Form: xB[i or o][1 or 0]
-InputFunc = str(escape.AsciiCode("XR")) #"xRr": sys.read;  "xRi": input(); "xRR": lineread
-CloseWindow = str(escape.AsciiCode("XQ"))
-NullEscape = '\00' #str(escape.AsciiCode("Xx"))
+GetSize = str(terminal.escape.AsciiCode("XS?"))
+IsSize = str(terminal.escape.AsciiCode("XS=")) #"xS=40,80;"
+SetBlock = str(terminal.escape.AsciiCode("XB")) #e.g, "xBi1". Form: xB[i or o][1 or 0]
+InputFunc = str(terminal.escape.AsciiCode("XR")) #"xRr": sys.read;  "xRi": input(); "xRR": lineread
+CloseWindow = str(terminal.escape.AsciiCode("XQ"))
+NullEscape = '\00' #str(terminal.escape.AsciiCode("Xx"))
 
 class WindowClosed(IOError):
   pass
 
 class Window:
-  def __init__(self, title="Terminal Window", verbose=True, recreate=True, key_out=coms.Input, tmp_file_prefix="terminal"):
+  def __init__(self, title="Terminal Window", verbose=True, recreate=True, key_out=terminal.coms.Input, tmp_file_prefix="terminal"):
     """
     Creates a new terminal window, accessible with a file-like object.
     The terminal is created using FIFO's and window_client.py
@@ -59,7 +59,7 @@ class Window:
     self.title = title
     self.verbose = verbose
     self.recreate = recreate
-    self.key_out = key_out #coms.Input keys.stream
+    self.key_out = key_out #terminal.coms.Input terminal.keys.stream
 
     self.fifoname = tempfile.mktemp(prefix=tmp_file_prefix+"-out-")
     self.keysname = tempfile.mktemp(prefix=tmp_file_prefix+"-in-")
@@ -70,7 +70,7 @@ class Window:
     self.kd = None
 
 
-    self.config_string = "{0}{1}{2}\r".format(escape.ClearScreen, escape.CursorHome, GetSize)
+    self.config_string = "{0}{1}{2}\r".format(terminal.escape.ClearScreen, terminal.escape.CursorHome, GetSize)
     self.size = None
 
     #failure detection stats
@@ -324,7 +324,7 @@ class Window:
     if not DO_AND:
       r.wait()
     self.open_files()
-    coms.noblock(self.kd.fileno())
+    terminal.coms.noblock(self.kd.fileno())
     self.write(self.config_string)
     self.flush()
     time.sleep(.01)
@@ -340,7 +340,7 @@ class Window:
           sys.stderr.write("Unable to get window size!\n")
 
     if self.verbose:
-      sys.stderr.write(str(escape.ClearLine)+'\r')
+      sys.stderr.write(str(terminal.escape.ClearLine)+'\r')
       sys.stderr.flush()
     
 
@@ -372,7 +372,7 @@ def test():
   winmsg = "Type stuff to be written into the other window."
   t.config(winmsg+'\n')
   import select
-  inp = coms.Input()
+  inp = terminal.coms.Input()
   print(winmsg)
   while 1:
     orig_size = t.size
