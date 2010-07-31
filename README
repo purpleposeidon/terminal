@@ -6,21 +6,22 @@ It's an alternative to programming with curses.
 
 Should You Use it?
   When to use:
-    When you think using curses is a pain in the ...bum
-    When you just want color/attributes, without dealing with the accursed curses
+    When you just want colors or attributes, without dealing with the accursed curses
     When you find using said accurséd to be a pain in the tushie
     When you want to use multiple terminal windows
     When you need to do terminal-manipulations on files other than stdout
     When you want unicode (If unicode is all you want, consider also py3k, which supports unicode with curses)
     When you think that curses' input system leaves something to be desired
-    When you trust the terminal package to let you see tracebacks AND keep your terminal sane
+    When you want to trust the terminal package to let you see tracebacks AND keep your terminal sane
   
   When not to use:
     When you have got to support non-typical terminals (I think konsole is typical)
     When you want to have sub-windows in a terminal
     When you want an easy way to do scrolling
-    When you think that curses does more efficient drawing routines than terminal, and that matters to you
+    When you think that curses does more efficient drawing routines than terminal (I don't think it does), and that matters to you
     When you want keypad
+    When you want a mature library
+    When you want to get mouse input
 
 
 The Modules:
@@ -36,4 +37,5 @@ The Modules:
     Terminal configuration, and file setup
   keys.py
     Intepret key codes
+
 
