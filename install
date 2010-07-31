@@ -1,0 +1,13 @@
+#!/bin/sh
+
+echo "Installing for python"
+python ./setup.py install
+if [ `which python3` ]; then
+  echo "Installing for python3"
+  python3 ./setup.py install; 
+else
+  echo "'python3' not found, won't install for it.";
+  echo "If it goes by a different name, run"
+  echo "   python3.X ./setupy.py install"
+  echo "with root privs."
+fi;
