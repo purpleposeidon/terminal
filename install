@@ -1,13 +1,36 @@
-#!/bin/sh
+#!/usr/bin/python
 
-echo "Installing for python"
-sudo python ./setup.py install
-if [ `which python3` ]; then
-  echo "Installing for python3"
-  sudo python3 ./setup.py install; 
-else
-  echo "'python3' not found, won't install for it.";
-  echo "If it goes by a different name, run"
-  echo "   python3.X ./setupy.py install"
-  echo "with root privs."
-fi;
+pythons = ["python", "python3"]
+codecs_replace_file = "fixed_codecs.py"
+
+import os
+import os.path
+import subprocess
+
+
+
+def exists(what):
+  """Use 'which' to check that a program exists"""
+  return not subprocess.Popen(['which', what], stdout=subprocess.PIPE, stderr=subprocess.PIPE).wait()
+
+def bold(msg):
+  print("\x1b[1m{0}\x1b[0m".format(msg))
+
+def install_version(name):
+  if exists(name):
+    bold("* Installing for {0}".format(name))
+    os.system("sudo {0} ./setup.py install".format(name))
+  else:
+    bold("""{0!r} not found, won't install for it.""")
+
+
+if __name__ == "__main__":
+  assert os.path.exists(codecs_replace_file)
+  for p in pythons:
+    install_version(p)
+  
+  bold("""If you have any other python versions to install install for, run with root privs:
+  
+    $PYTHONVERSION ./setup.py install
+  """)
+  
