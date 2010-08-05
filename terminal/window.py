@@ -78,7 +78,7 @@ class Window:
     #failure detection stats
     self.max_second_per_close = 5 #Can't be closed a bunch of times in a row
     self.start = time.time()
-    self.deaths = 0
+    self.deaths = 0.0
 
     self.create_terminal()
   
@@ -190,6 +190,15 @@ class Window:
           """
         else:
           raise
+    except TypeError: #"can't concat bytes to NoneType" -- bug from codecs.py caused by use of non-blocking io, I think.
+      #XXX
+      ###print("\n\n\n\n\nTHE ERROR IS HERE\n\n\n")
+      ###import sys
+      ###sys.bah = self.kd
+      ###import time
+      ###time.sleep(1)
+      ###raise
+      return ''
     
     while IsSize in d:
       afore = d[:d.index(IsSize)]
@@ -243,7 +252,7 @@ class Window:
   def flush(self):
     """
     Flushes output to terminal. (It might not really be necessary)
-    As a side effect, it will re-create the terminal if requested.
+    As a side effect, it will re-create the terminal if it is enabled.
     """
     try:
       self.fd.flush()
@@ -258,16 +267,16 @@ class Window:
     """
     #check openning limit
     self.deaths += 1
-    if (time.time() - self.start)/self.deaths > self.max_second_per_close:
+    if self.deaths > 1 and (time.time() - self.start)/self.deaths < self.max_second_per_close:
       raise KeyboardInterrupt("Broken window loop suspected.")
     #all clear
     self.title = self.title.replace('"', '').replace("'", "\\'")
     DO_AND = True
     SILENCE_STDOUT = True
     if "TERM" in os.environ:
-      t = os.environ["TERM"]
+      env_term = os.environ.get("TERM")
 
-      if 'screen' in t: #I saw 'screen.linux' .oi
+      if 'screen' in env_term: #I saw 'screen.linux' .oi
         if not exists("screen"):
           raise SystemExit("$TERM is screen, yet the program 'screen' could not be found")
         #cmd = "screen -t {1} {0}"
@@ -275,8 +284,11 @@ class Window:
         DO_AND = False
       elif "DISPLAY" in os.environ:
         #cmd = "x-terminal-emulator -T {1} -e {0}"
-        cmd = ["x-terminal-emulator", "-T", repr(self.title), '-e']
-        if "DESKTOP_SESSION" in os.environ:
+        if env_term == 'xterm':
+          cmd = ["xterm", "-T", repr(self.title), '-e']
+        else:
+          cmd = ["x-terminal-emulator", "-T", repr(self.title), '-e']
+        if "DESKTOP_SESSION" in os.environ and env_term in ['konsole', 'gnome-terminal']:
           ds = os.environ["DESKTOP_SESSION"].lower()
           if 'kde' in ds and exists("konsole"):
             #cmd = "konsole --title {1} -e {0}"
@@ -286,7 +298,6 @@ class Window:
             #cmd = "gnome-terminal -t {1} --execute {0}"
             cmd = ['gnome-terminal', '-t', repr(self.title), '--execute']
       else:
-        print("TERM: = {0}".format(t))
         if not exists("screen"):
           raise SystemExit("Can not continue. You will either need to run this program from a graphical environment, or install the program 'screen'.")
         else:
