@@ -24,8 +24,8 @@ import terminal.coms
 import terminal.keys
 import terminal.escape
 
-if sys.version[0] == 3:
-  sys.stderr.write("terminal.window: Something horrible happens with python3. Sorry.")
+if sys.version_info[0] == 3:
+  sys.stderr.write("terminal.window: horrible things happen in python3. Don't use terminal windows. Sorry.\n") #because there's a bug with codecs and reading non-blocking files...
 
 
 def exists(what):
