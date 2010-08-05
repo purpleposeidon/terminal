@@ -17,10 +17,10 @@ import os
 import sys
 import fcntl
 import atexit
-import codecs
 import select
 import struct
 import termios
+import codecs
 
 
 """
@@ -263,6 +263,28 @@ def test():
       sys.stdout.write(c)
       sys.stdout.flush()
 
+def othertest():
+  print("Close with ^C")
+  f = Input()
+  while 1:
+    c = None
+    select.select([f], [],[])
+    try:
+      c = f.read(1)
+    except IOError:
+      continue
+    except KeyboardInterrupt:
+      break
+    except:
+      raise
+    if c:
+      sys.stdout.write(repr(c)+'\n')
+      sys.stdout.flush()
+
+  
+
 if __name__ == '__main__':
-  test()
+  if len(sys.argv) == 1:
+    test()
+  else: othertest()
 

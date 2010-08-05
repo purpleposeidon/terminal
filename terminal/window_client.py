@@ -42,7 +42,7 @@ def say_size(w, h, kf):
   kf.flush()
 
 def main(display_file, keys_file):
-  print("Window not connected . . .")
+  print("Waiting for parent program to connect . . .")
   df = coms.Input(display_file)
   kf = open(keys_file, 'w')
   def resize_handler(*args):
@@ -166,4 +166,14 @@ def test():
 
 
 if __name__ == '__main__':
-  test()
+  baderr = False
+  try:
+    test()
+  except Exception as e:
+    print("ERROR: {0}".format(e))
+    baderr = True
+  finally:
+    if baderr:
+      time.sleep(1)
+      print("Press enter to this close window")
+      sys.stdin.readline()

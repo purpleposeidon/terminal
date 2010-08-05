@@ -24,6 +24,8 @@ import terminal.coms
 import terminal.keys
 import terminal.escape
 
+if sys.version[0] == 3:
+  sys.stderr.write("terminal.window: Something horrible happens with python3. Sorry.")
 
 
 def exists(what):
@@ -42,7 +44,7 @@ class WindowClosed(IOError):
   pass
 
 class Window:
-  def __init__(self, title="Terminal Window", verbose=True, recreate=True, key_out=terminal.coms.Input, tmp_file_prefix="terminal"):
+  def __init__(self, title="Terminal Window", verbose=True, recreate=True, key_out=terminal.coms.Input, tmp_file_prefix="terminal-"+str(os.getpid())):
     """
     Creates a new terminal window, accessible with a file-like object.
     The terminal is created using FIFO's and window_client.py
@@ -265,25 +267,26 @@ class Window:
     if "TERM" in os.environ:
       t = os.environ["TERM"]
 
-      if t == 'screen':
+      if 'screen' in t: #I saw 'screen.linux' .oi
         if not exists("screen"):
           raise SystemExit("$TERM is screen, yet the program 'screen' could not be found")
         #cmd = "screen -t {1} {0}"
-        cmd = ["screen", "-t", self.title]
+        cmd = ["screen", "-t", repr(self.title)] #Note: Screen acts in the most retarded way possible in re. to argument handling
         DO_AND = False
       elif "DISPLAY" in os.environ:
         #cmd = "x-terminal-emulator -T {1} -e {0}"
-        cmd = ["x-terminal-emulator", "-T", self.title, '-e']
+        cmd = ["x-terminal-emulator", "-T", repr(self.title), '-e']
         if "DESKTOP_SESSION" in os.environ:
           ds = os.environ["DESKTOP_SESSION"].lower()
           if 'kde' in ds and exists("konsole"):
             #cmd = "konsole --title {1} -e {0}"
-            cmd = ["konsole", "--title", self.title, "-e"]
+            cmd = ["konsole", "--title", repr(self.title), "-e"]
             SILENCE_STDOUT = False #Funky bug.
           elif 'gnome' in ds and exists("gnome-terminal"):
             #cmd = "gnome-terminal -t {1} --execute {0}"
-            cmd = ['gnome-terminal', '-t', self.title, '--execute']
+            cmd = ['gnome-terminal', '-t', repr(self.title), '--execute']
       else:
+        print("TERM: = {0}".format(t))
         if not exists("screen"):
           raise SystemExit("Can not continue. You will either need to run this program from a graphical environment, or install the program 'screen'.")
         else:
@@ -308,7 +311,6 @@ class Window:
     #if DO_AND:
       #tail += " &"
     
-    #cmd = cmd.format(tail, '"'+self.title+'"')
     cmd = cmd + tail
     #sys.stderr.write("Running command {0!r}\n".format(cmd))
     if self.verbose:
@@ -316,7 +318,6 @@ class Window:
       sys.stderr.write("\rOpening new window, if this program hangs, press Ctrl-C")
       sys.stderr.flush()
       
-    
     if SILENCE_STDOUT:
       r = subprocess.Popen(cmd, stdout=open('/dev/null', 'w'), stderr=open('/dev/null', 'w'))
     else:
