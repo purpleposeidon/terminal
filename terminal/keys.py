@@ -97,6 +97,17 @@ class FakeKey:
   def __str__(self):
     return "<Unknown key: {0!r}>".format(self.sequence.replace(terminal.escape.ESC, '\E'))
 
+  def upper(self):
+    return self.sequence
+  
+  def title(self):
+    return self.sequence
+
+  def encode(self, encoding=None):
+    return str(self).encode(encoding)
+  
+  def __len__(self):
+    return len(self.sequence)
 
 class KeyState:
   def __init__(self, value, shift=False, ctrl=False, alt=False, logo=False, single=False, character=None):
@@ -199,7 +210,7 @@ IGNORE = 0
 ERROR = 1
 FAKE = 2
 
-def get_key(fd, empty_is_eof=False, bad_escape=ERROR, **kwargs):
+def get_key(fd, empty_is_eof=False, bad_escape=FAKE, **kwargs):
   """
   This iterator does the work of yielding KeyStates.
 
@@ -207,7 +218,7 @@ def get_key(fd, empty_is_eof=False, bad_escape=ERROR, **kwargs):
   used, fd will be put into non-blocking mode. It will be restored
   to blocking mode when get_key returns. For character keys, the
   function returns immediatly. The worst-case is
-  terminal.ESCAPE_DELAY seconds if the user presses Escape-key.
+  coms.ESCAPE_DELAY seconds if the user presses Escape-key.
 
   ``bad_escape'' is used to control what happens when an unknown escape
   sequence is used. If keys.IGNORE, the sequence is not returned. If keys.ERROR,
@@ -228,7 +239,7 @@ def get_key(fd, empty_is_eof=False, bad_escape=ERROR, **kwargs):
     #Escape sequences. Unnecessarily difficult.
     start = time.time()
     end = start+ESCAPE_DELAY
-    new_char = "XXX"
+    new_char = None
     #make sure blocking is off.
     if fd.blocking:
       terminal.coms.noblock(fd)
@@ -356,6 +367,14 @@ ModKey("F9", "\E[20;*~")
 ModKey("F10", "\E[21;*~")
 ModKey("F11", "\E[23;*~")
 ModKey("F12", "\E[24;*~")
+#These are used on the linux console
+#TODO: Sadly, they do not work!
+SpecialKey("F1", "\E[[A")
+SpecialKey("F2", "\E[[B")
+SpecialKey("F3", "\E[[C")
+SpecialKey("F4", "\E[[D")
+SpecialKey("F5", "\E[[E")
+
 
 SpecialKey(KeyState("SPACE", ctrl=True), "\x00")
 
