@@ -77,6 +77,7 @@ OTHER
 CursorHide, CursorShow: Hide/Show the cursor
 TerminalTitle(name): Sometimes sets the terminal title. Sometimes fails badly.
 NoScroll, YesScroll: Enable/disable the terminal's scroll buffer, it is often a separate from normal mode. Sometimes it has no effect. It is similiar to what vi does.
+ScrollRegion(top, bottom): Sets the scroll region; newlines inserted between top and bottom only scroll the lines there (or something like that). In Konsole, the cursor is moved to CursorHome. In xterm, it is moved to the top of the scroll region. So use CursorSet(top, 1) after. Use ScrollRegion(0, 0) to unset the scroll region.
 
 """
 
@@ -133,8 +134,6 @@ CursorDown = AsciiCode("@B") #To move the cursor by X chars, do CursorMOTION(X)
 CursorRight = AsciiCode("@C") #If no argument is given to these ascii codes, it moves 1
 CursorLeft = AsciiCode("@D")
 CursorSet = AsciiCode("@;@H") #Line, Col.
-#CursorSave = AsciiCode("7") #XXX - Doesn't work?
-#CursorRestore = AsciiCode("8")
 CursorSave = AsciiCode('s')
 CursorRestore = AsciiCode('u')
 NewLine = AsciiCode(value='\n')
