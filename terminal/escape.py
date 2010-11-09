@@ -133,8 +133,10 @@ CursorDown = AsciiCode("@B") #To move the cursor by X chars, do CursorMOTION(X)
 CursorRight = AsciiCode("@C") #If no argument is given to these ascii codes, it moves 1
 CursorLeft = AsciiCode("@D")
 CursorSet = AsciiCode("@;@H") #Line, Col.
-CursorSave = AsciiCode("7") #XXX - Doesn't work?
-CursorRestore = AsciiCode("8")
+#CursorSave = AsciiCode("7") #XXX - Doesn't work?
+#CursorRestore = AsciiCode("8")
+CursorSave = AsciiCode('s')
+CursorRestore = AsciiCode('u')
 NewLine = AsciiCode(value='\n')
 AddLine = AsciiCode('L')
 DelLine = AsciiCode('J')
