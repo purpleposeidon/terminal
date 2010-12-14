@@ -138,7 +138,7 @@ CursorSave = AsciiCode('s')
 CursorRestore = AsciiCode('u')
 NewLine = AsciiCode(value='\n')
 AddLine = AsciiCode('L')
-DelLine = AsciiCode('J')
+DelLine = AsciiCode('J') #XXX Same as ClearScreenDown?
 CursorReturn = AsciiCode(value='\r')
 CursorPosition = AsciiCode(sequence="6n")
 
@@ -147,7 +147,7 @@ ClearLine = AsciiCode("2K")
 ClearLineRight = AsciiCode("K")
 ClearLineLeft = AsciiCode("1K")
 ClearScreen = AsciiCode("2J") #Cursor goes to bottom left. (see CursorHome).
-ClearScreenUp = AsciiCode("0J")
+ClearScreenUp = AsciiCode("1J")
 ClearScreenDown = AsciiCode("J")
 TerminalReset = AsciiCode(sequence="c")
 #TerminalReset and ClearScreen leave scrollback on konsole. Try CursorHome+ClearScreenDown
