@@ -82,7 +82,8 @@ ScrollRegion(top, bottom): Sets the scroll region; newlines inserted between top
 """
 
 ESC = chr(27)
-CSI = ESC+'['
+CSI = chr(0x9B)
+#CSI = ESC+'['
 
 class PseudoString:
   def __add__(self, other): return str(self)+other
