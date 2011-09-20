@@ -341,8 +341,8 @@ EscKey("LEFT", '\E[D')
 
 ModKey("UP", "\E[1;*A")
 ModKey("DOWN", "\E[1;*B")
-ModKey("LEFT", "\E[1;*C")
-ModKey("RIGHT", "\E[1;*D")
+ModKey("RIGHT", "\E[1;*C")
+ModKey("LEFT", "\E[1;*D")
 
 #TODO: "breaks the keypad in Vim"
 
